@@ -1,4 +1,4 @@
-const CACHE_NAME = 'parceltrack-v2';
+const CACHE_NAME = 'parceltrack-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,8 @@ const ASSETS = [
   './js/api.js',
   './js/sync.js',
   './js/scanner.js',
+  './js/print.js',
+  './js/reports.js',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/html5-qrcode',
   'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js'

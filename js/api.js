@@ -1,11 +1,9 @@
-// URL proporcionada al desplegar Google Apps Script como Web App
-const API_URL = 'https://script.google.com/macros/s/AKfycbyznYkKUO--UCkdJGQpA-8cpr7UWzHFekNAG-DGrfu2HARel4PUd4lJxIC3cE5sOqs3jw/exec';
+const API_URL = 'REEMPLAZAR_CON_TU_URL_DE_GOOGLE_APPS_SCRIPT';
 
 const api = {
+  // Sincronización Push (Local -> Nube)
   async sendBatch(operations) {
-    if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) {
-      return false;
-    }
+    if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) return false;
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
@@ -15,8 +13,21 @@ const api = {
       const data = await res.json();
       return data.success;
     } catch (e) {
-      console.error('Error Sync:', e);
+      console.error('Error Sync Push:', e);
       return false;
+    }
+  },
+
+  // Sincronización Pull (Nube -> Local) [Fase 2]
+  async fetchPackages() {
+    if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) return null;
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      return data.success ? data.packages : null;
+    } catch (e) {
+      console.error('Error Sync Pull:', e);
+      return null;
     }
   }
 };

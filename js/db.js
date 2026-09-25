@@ -15,7 +15,7 @@ class LocalDB {
         resolve();
       };
       req.onupgradeneeded = e => {
-        const db = e.result;
+        const db = e.target.result;
         if (!db.objectStoreNames.contains('packages')) {
           const store = db.createObjectStore('packages', { keyPath: 'packageId' });
           store.createIndex('status', 'status', { unique: false });
@@ -24,6 +24,15 @@ class LocalDB {
           db.createObjectStore('syncQueue', { keyPath: 'id' });
         }
       };
+    });
+  }
+
+  async get(storeName, key) {
+    return new Promise((resolve) => {
+      const tx = this.db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
     });
   }
 

@@ -1,6 +1,7 @@
 class App {
   constructor() {
     this.selectedDeliveryPackage = null;
+    this.lastCreatedPackage = null;
   }
 
   async init() {
@@ -18,7 +19,7 @@ class App {
 
   login() {
     const pin = document.getElementById('pin-input').value;
-    if (pin === '1234') { // Contraseña por defecto MVP
+    if (pin === '1234') {
       localStorage.setItem('pt_logged', 'true');
       document.getElementById('view-login').classList.add('hidden');
     } else {
@@ -65,13 +66,13 @@ class App {
       createdAt: new Date().toISOString()
     };
 
+    this.lastCreatedPackage = pkg;
+
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
 
     // Generar QR
-    const typeNumber = 4;
-    const errorCorrectionLevel = 'L';
-    const qr = qrcode(typeNumber, errorCorrectionLevel);
+    const qr = qrcode(4, 'L');
     qr.addData(pkg.qrCode);
     qr.make();
     
@@ -83,6 +84,12 @@ class App {
     document.getElementById('form-reception').reset();
     this.loadDashboard();
     syncEngine.processQueue();
+  }
+
+  printCurrentPackage() {
+    if (this.lastCreatedPackage) {
+      printer.printLabel(this.lastCreatedPackage);
+    }
   }
 
   async updatePackageLocation(qrCode, newLocation) {
@@ -161,19 +168,35 @@ class App {
     document.getElementById('kpi-entregados').textContent = entregadosHoy;
     document.getElementById('kpi-pendientes').textContent = pendientes.length;
 
+    // Filtros de Búsqueda Fase 2
+    const query = (document.getElementById('search-input')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('filter-status')?.value || 'PENDIENTE';
+
+    let filtered = packages.filter(p => {
+      const matchQuery = p.client.toLowerCase().includes(query) || 
+                         p.code.toLowerCase().includes(query) || 
+                         p.location.toLowerCase().includes(query);
+      const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
+      return matchQuery && matchStatus;
+    });
+
     const listEl = document.getElementById('list-pending');
-    if (pendientes.length === 0) {
-      listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes pendientes almacenados.</p>';
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontraron paquetes con los filtros actuales.</p>';
       return;
     }
 
-    listEl.innerHTML = pendientes.map(p => `
-      <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+    listEl.innerHTML = filtered.map(p => `
+      <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
         <div>
-          <span class="font-mono font-bold text-slate-800">${p.code}</span> - <span class="font-semibold text-slate-600">${p.client}</span>
-          <div class="text-[10px] text-slate-400">Ub: ${p.location} | Cat: ${p.category}</div>
+          <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
+          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category}</div>
+          ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo}</div>` : ''}
         </div>
-        <span class="px-2 py-1 bg-amber-50 text-amber-600 font-bold rounded text-[10px]">${p.status}</span>
+        <div class="flex flex-col items-end gap-1">
+          <span class="px-2 py-0.5 ${p.status === 'ENTREGADO' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold rounded text-[10px]">${p.status}</span>
+          <button onclick='printer.printLabel(${JSON.stringify(p)})' class="text-[10px] text-blue-600 underline">🖨️ Ticket</button>
+        </div>
       </div>
     `).join('');
   }

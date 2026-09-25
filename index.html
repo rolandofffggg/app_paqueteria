@@ -24,7 +24,7 @@
     </div>
   </header>
 
-  <!-- Login Modal/View -->
+  <!-- Login Modal -->
   <div id="view-login" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl space-y-4 text-center">
       <div class="text-4xl">🔐</div>
@@ -38,10 +38,10 @@
   <!-- Main Content -->
   <main id="main-content" class="flex-1 max-w-md w-full mx-auto p-4 overflow-y-auto pb-20">
     
-    <!-- Dashboard View (Fase 2: Búsqueda y Filtros) -->
+    <!-- Dashboard View (Fase 3: Métricas Financieras) -->
     <section id="sec-dashboard" class="space-y-4">
       <h2 class="text-lg font-bold text-slate-700">Resumen de Hoy</h2>
-      <div class="grid grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
           <span class="block text-2xl font-black text-blue-600" id="kpi-recibidos">0</span>
           <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Recibidos</span>
@@ -54,13 +54,20 @@
           <span class="block text-2xl font-black text-amber-600" id="kpi-pendientes">0</span>
           <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Pendientes</span>
         </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+          <span class="block text-2xl font-black text-purple-600" id="kpi-ingresos">Bs. 0.00</span>
+          <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Cobrado Hoy</span>
+        </div>
       </div>
 
       <!-- Buscador y Filtros -->
       <div class="space-y-2 pt-2">
         <div class="flex justify-between items-center">
           <h3 class="text-sm font-bold text-slate-700">Listado de Paquetes</h3>
-          <button onclick="app.syncNow()" class="text-xs text-blue-600 font-semibold underline">🔄 Sincronizar</button>
+          <div class="flex gap-2">
+            <button onclick="app.downloadReport()" class="text-xs text-emerald-600 font-semibold underline">📥 Exportar CSV</button>
+            <button onclick="app.syncNow()" class="text-xs text-blue-600 font-semibold underline">🔄 Sincronizar</button>
+          </div>
         </div>
         <div class="flex gap-2">
           <input type="text" id="search-input" oninput="app.loadDashboard()" placeholder="Buscar cliente, código..." class="flex-1 px-3 py-2 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
@@ -104,7 +111,7 @@
         <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">Guardar y Generar QR</button>
       </form>
 
-      <!-- Ticket QR Card con Opción de Impresión (Fase 2) -->
+      <!-- Ticket QR Card -->
       <div id="qr-result" class="hidden bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">
         <h3 class="text-sm font-bold text-slate-600">¡Paquete Registrado!</h3>
         <div class="text-2xl font-black text-slate-800 font-mono" id="res-code">00001</div>
@@ -139,7 +146,7 @@
       </div>
     </section>
 
-    <!-- Entrega View -->
+    <!-- Entrega View (Fase 3: Calculadora Financiera de Cobro) -->
     <section id="sec-delivery" class="space-y-4 hidden">
       <h2 class="text-lg font-bold text-slate-700">Entrega de Paquete</h2>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -154,6 +161,27 @@
             <p><strong>Ubicación:</strong> <span id="del-pkg-loc"></span></p>
           </div>
 
+          <!-- Desglose de Tarifas de Almacenamiento -->
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Días en almacén:</span>
+              <span id="calc-days" class="font-bold text-slate-700">1</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Tarifa resguardo (Bs. 2/día):</span>
+              <span id="calc-base" class="font-bold text-slate-700">Bs. 2.00</span>
+            </div>
+            <div class="flex justify-between text-amber-600">
+              <span>Penalización retraso (>3 días):</span>
+              <span id="calc-penalty" class="font-bold">Bs. 0.00</span>
+            </div>
+            <hr class="my-1">
+            <div class="flex justify-between text-sm font-black text-slate-800">
+              <span>TOTAL A COBRAR:</span>
+              <span id="calc-total" class="text-emerald-600">Bs. 2.00</span>
+            </div>
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre de quien retira</label>
             <input type="text" id="del-retira-nombre" required placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
@@ -163,7 +191,7 @@
             <input type="text" id="del-retira-id" required placeholder="Nº de documento" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
           </div>
 
-          <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Confirmar Entrega</button>
+          <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Confirmar Entrega y Cobro</button>
         </div>
       </div>
     </section>
@@ -203,6 +231,7 @@
   <script src="./js/sync.js"></script>
   <script src="./js/scanner.js"></script>
   <script src="./js/print.js"></script>
+  <script src="./js/reports.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ class App {
   constructor() {
     this.selectedDeliveryPackage = null;
     this.lastCreatedPackage = null;
+    this.currentCalculatedAmount = 0;
   }
 
   async init() {
@@ -63,7 +64,8 @@ class App {
       category: document.getElementById('rec-categoria').value,
       location: document.getElementById('rec-ubicacion').value,
       status: 'PENDIENTE',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      amountCharged: 0
     };
 
     this.lastCreatedPackage = pkg;
@@ -71,7 +73,6 @@ class App {
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
 
-    // Generar QR
     const qr = qrcode(4, 'L');
     qr.addData(pkg.qrCode);
     qr.make();
@@ -115,6 +116,7 @@ class App {
     syncEngine.processQueue();
   }
 
+  // Prepara la entrega y realiza el cálculo monetario
   async prepareDelivery(qrCode) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
@@ -125,9 +127,33 @@ class App {
     }
 
     this.selectedDeliveryPackage = pkg;
+    
+    // Cálculo de Días y Tarifa
+    const createdDate = new Date(pkg.createdAt || Date.now());
+    const now = new Date();
+    const diffTime = Math.abs(now - createdDate);
+    const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    const tarifaBasePorDia = 2.0; // Bs. 2 por día
+    const diasGracia = 3;
+    const penalizacionDiaria = 1.0; // Bs. 1 por día extra
+
+    const montoBase = diffDays * tarifaBasePorDia;
+    const diasRetraso = Math.max(0, diffDays - diasGracia);
+    const montoPenalizacion = diasRetraso * penalizacionDiaria;
+    const totalCobro = montoBase + montoPenalizacion;
+
+    this.currentCalculatedAmount = totalCobro;
+
     document.getElementById('del-pkg-code').textContent = pkg.code;
     document.getElementById('del-pkg-client').textContent = pkg.client;
     document.getElementById('del-pkg-loc').textContent = pkg.location;
+
+    document.getElementById('calc-days').textContent = diffDays;
+    document.getElementById('calc-base').textContent = `Bs. ${montoBase.toFixed(2)}`;
+    document.getElementById('calc-penalty').textContent = `Bs. ${montoPenalizacion.toFixed(2)}`;
+    document.getElementById('calc-total').textContent = `Bs. ${totalCobro.toFixed(2)}`;
+
     document.getElementById('del-details').classList.remove('hidden');
   }
 
@@ -145,11 +171,12 @@ class App {
     this.selectedDeliveryPackage.status = 'ENTREGADO';
     this.selectedDeliveryPackage.deliveredTo = `${nombre} (${doc})`;
     this.selectedDeliveryPackage.deliveredAt = new Date().toISOString();
+    this.selectedDeliveryPackage.amountCharged = this.currentCalculatedAmount;
 
     await db.put('packages', this.selectedDeliveryPackage);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'DELIVERY', payload: this.selectedDeliveryPackage });
 
-    alert('¡Entrega confirmada!');
+    alert(`¡Entrega confirmada! Cobro realizado: Bs. ${this.currentCalculatedAmount.toFixed(2)}`);
     document.getElementById('del-details').classList.add('hidden');
     this.selectedDeliveryPackage = null;
     this.loadDashboard();
@@ -161,21 +188,24 @@ class App {
     const todayStr = new Date().toISOString().split('T')[0];
 
     const recibidosHoy = packages.filter(p => p.createdAt && p.createdAt.startsWith(todayStr)).length;
-    const entregadosHoy = packages.filter(p => p.status === 'ENTREGADO' && p.deliveredAt && p.deliveredAt.startsWith(todayStr)).length;
+    const entregadosHoyPackages = packages.filter(p => p.status === 'ENTREGADO' && p.deliveredAt && p.deliveredAt.startsWith(todayStr));
+    const entregadosHoy = entregadosHoyPackages.length;
     const pendientes = packages.filter(p => p.status === 'PENDIENTE');
+
+    const ingresosHoy = entregadosHoyPackages.reduce((sum, p) => sum + (p.amountCharged || 0), 0);
 
     document.getElementById('kpi-recibidos').textContent = recibidosHoy;
     document.getElementById('kpi-entregados').textContent = entregadosHoy;
     document.getElementById('kpi-pendientes').textContent = pendientes.length;
+    document.getElementById('kpi-ingresos').textContent = `Bs. ${ingresosHoy.toFixed(2)}`;
 
-    // Filtros de Búsqueda Fase 2
     const query = (document.getElementById('search-input')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('filter-status')?.value || 'PENDIENTE';
 
     let filtered = packages.filter(p => {
-      const matchQuery = p.client.toLowerCase().includes(query) || 
-                         p.code.toLowerCase().includes(query) || 
-                         p.location.toLowerCase().includes(query);
+      const matchQuery = (p.client || '').toLowerCase().includes(query) || 
+                         (p.code || '').toLowerCase().includes(query) || 
+                         (p.location || '').toLowerCase().includes(query);
       const matchStatus = statusFilter === 'ALL' || p.status === statusFilter;
       return matchQuery && matchStatus;
     });
@@ -191,7 +221,7 @@ class App {
         <div>
           <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
           <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category}</div>
-          ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo}</div>` : ''}
+          ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo} (Bs.${(p.amountCharged || 0).toFixed(2)})</div>` : ''}
         </div>
         <div class="flex flex-col items-end gap-1">
           <span class="px-2 py-0.5 ${p.status === 'ENTREGADO' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold rounded text-[10px]">${p.status}</span>
@@ -199,6 +229,11 @@ class App {
         </div>
       </div>
     `).join('');
+  }
+
+  async downloadReport() {
+    const packages = await db.getAll('packages');
+    reports.exportToCSV(packages, `Reporte_ParcelTrack_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
   syncNow() {

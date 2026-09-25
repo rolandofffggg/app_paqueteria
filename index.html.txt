@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>ParcelTrack PWA</title>
+  <link rel="manifest" href="./manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
+    <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+      <h1 class="text-lg font-bold tracking-wide text-blue-400">📦 ParcelTrack</h1>
+      <div class="flex items-center space-x-2 text-xs">
+        <span id="net-status" class="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
+        <span id="sync-status" class="hidden px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Sync: 0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login Modal/View -->
+  <div id="view-login" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl space-y-4 text-center">
+      <div class="text-4xl">🔐</div>
+      <h2 class="text-xl font-bold text-slate-800">Acceso Operador</h2>
+      <input type="password" id="pin-input" placeholder="Clave de acceso" class="w-full text-center px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-lg">
+      <button onclick="app.login()" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 transition">Ingresar</button>
+      <p id="login-error" class="text-xs text-red-500 hidden">Clave incorrecta</p>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="flex-1 max-w-md w-full mx-auto p-4 overflow-y-auto pb-20">
+    
+    <!-- Dashboard View -->
+    <section id="sec-dashboard" class="space-y-4">
+      <h2 class="text-lg font-bold text-slate-700">Resumen de Hoy</h2>
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+          <span class="block text-2xl font-black text-blue-600" id="kpi-recibidos">0</span>
+          <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Recibidos</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+          <span class="block text-2xl font-black text-emerald-600" id="kpi-entregados">0</span>
+          <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Entregados</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 text-center shadow-sm">
+          <span class="block text-2xl font-black text-amber-600" id="kpi-pendientes">0</span>
+          <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Pendientes</span>
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center pt-2">
+        <h3 class="text-sm font-bold text-slate-700">Paquetes Pendientes</h3>
+        <button onclick="app.syncNow()" class="text-xs text-blue-600 font-semibold underline">Sincronizar Manual</button>
+      </div>
+      <div id="list-pending" class="space-y-2">
+        <p class="text-xs text-slate-400 text-center py-4">No hay paquetes pendientes almacenados.</p>
+      </div>
+    </section>
+
+    <!-- Recepción View -->
+    <section id="sec-reception" class="space-y-4 hidden">
+      <h2 class="text-lg font-bold text-slate-700">Registrar Nuevo Paquete</h2>
+      <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cliente</label>
+          <input type="text" id="rec-cliente" required placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Categoría</label>
+          <select id="rec-categoria" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+            <option value="ROPA">ROPA</option>
+            <option value="DOCUMENTOS">DOCUMENTOS</option>
+            <option value="ELECTRÓNICA">ELECTRÓNICA</option>
+            <option value="OTROS">OTROS</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Ubicación</label>
+          <div class="flex gap-2">
+            <input type="text" id="rec-ubicacion" placeholder="Ej: T1-E1.F2" required class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+            <button type="button" onclick="scanner.scanToInput('rec-ubicacion')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold">📷 Scan</button>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition">Guardar y Generar QR</button>
+      </form>
+
+      <!-- Ticket QR Card -->
+      <div id="qr-result" class="hidden bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">
+        <h3 class="text-sm font-bold text-slate-600">¡Paquete Registrado!</h3>
+        <div class="text-2xl font-black text-slate-800 font-mono" id="res-code">00001</div>
+        <div id="qrcode-target" class="flex justify-center py-2"></div>
+        <p class="text-xs text-slate-500" id="res-client"></p>
+        <button onclick="document.getElementById('qr-result').classList.add('hidden')" class="w-full bg-slate-100 text-slate-700 font-semibold py-2 rounded-lg text-xs">Cerrar Ticket</button>
+      </div>
+    </section>
+
+    <!-- Inventario View -->
+    <section id="sec-inventory" class="space-y-4 hidden">
+      <h2 class="text-lg font-bold text-slate-700">Inventario por Ubicación</h2>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border">
+          <span class="text-xs font-bold text-slate-500">UBICACIÓN FIJA:</span>
+          <span id="inv-fixed-loc" class="font-mono font-bold text-blue-600">NINGUNA</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="scanner.scanLocation()" class="bg-slate-800 text-white py-2 px-3 rounded-lg text-xs font-semibold">1. Escanear Ubicación</button>
+          <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="bg-blue-600 disabled:bg-slate-300 text-white py-2 px-3 rounded-lg text-xs font-semibold">2. Escanear Paquete</button>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Paquetes Verificados</h3>
+        <ul id="inv-scanned-list" class="divide-y divide-slate-100 text-xs">
+          <li class="py-2 text-slate-400 text-center">Inicie el escaneo de ubicación</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Entrega View -->
+    <section id="sec-delivery" class="space-y-4 hidden">
+      <h2 class="text-lg font-bold text-slate-700">Entrega de Paquete</h2>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <button onclick="scanner.scanForDelivery()" class="w-full bg-slate-800 text-white font-semibold py-3 rounded-xl text-xs flex justify-center items-center gap-2">
+          <span>📷</span> Escanear QR de Paquete
+        </button>
+
+        <div id="del-details" class="hidden space-y-3 border-t pt-3">
+          <div class="bg-blue-50 p-3 rounded-lg text-xs space-y-1">
+            <p><strong>Código:</strong> <span id="del-pkg-code" class="font-mono"></span></p>
+            <p><strong>Cliente:</strong> <span id="del-pkg-client"></span></p>
+            <p><strong>Ubicación:</strong> <span id="del-pkg-loc"></span></p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre de quien retira</label>
+            <input type="text" id="del-retira-nombre" required placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Identificación (CI / DNI)</label>
+            <input type="text" id="del-retira-id" required placeholder="Nº de documento" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+          </div>
+
+          <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Confirmar Entrega</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Navigation Bar Mobile -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-16 shadow-lg">
+    <div class="max-w-md mx-auto h-full grid grid-cols-4 text-center">
+      <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-lg">📊</span><span class="text-[10px]">Dashboard</span>
+      </button>
+      <button onclick="app.showSec('sec-reception')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-lg">📦</span><span class="text-[10px]">Recepción</span>
+      </button>
+      <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-lg">📋</span><span class="text-[10px]">Inventario</span>
+      </button>
+      <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-lg">🚚</span><span class="text-[10px]">Entrega</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Modal Cámara Scanner -->
+  <div id="modal-scanner" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col justify-between p-4">
+    <div class="flex justify-between items-center text-white">
+      <h3 class="text-sm font-semibold" id="scan-title">Escanear Código QR</h3>
+      <button onclick="scanner.close()" class="text-2xl font-bold">&times;</button>
+    </div>
+    <div id="reader" class="w-full bg-slate-900 rounded-xl overflow-hidden my-auto"></div>
+    <button onclick="scanner.close()" class="w-full bg-white/20 text-white py-3 rounded-xl text-sm font-semibold">Cancelar</button>
+  </div>
+
+  <script src="./js/db.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/sync.js"></script>
+  <script src="./js/scanner.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

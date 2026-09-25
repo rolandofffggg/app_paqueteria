@@ -1,0 +1,54 @@
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    
+    if (data.action === 'syncBatch') {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var sheet = ss.getSheetByName('PACKAGES') || ss.insertSheet('PACKAGES');
+      
+      // Crear encabezados si la hoja está vacía
+      if (sheet.getLastRow() === 0) {
+        sheet.appendRow([
+          'packageId', 'code', 'qrCode', 'client', 'category', 
+          'location', 'status', 'deliveredTo', 'createdAt', 'deliveredAt'
+        ]);
+      }
+      
+      var operations = data.operations;
+      var existingData = sheet.getDataRange().getValues();
+      
+      operations.forEach(function(op) {
+        var p = op.payload;
+        var foundRow = -1;
+        
+        // Buscar fila existente por packageId
+        for (var i = 1; i < existingData.length; i++) {
+          if (existingData[i][0] === p.packageId) {
+            foundRow = i + 1;
+            break;
+          }
+        }
+        
+        if (foundRow > -1) {
+          // Actualizar registro existente
+          sheet.getRange(foundRow, 6).setValue(p.location);
+          sheet.getRange(foundRow, 7).setValue(p.status);
+          sheet.getRange(foundRow, 8).setValue(p.deliveredTo || '');
+          sheet.getRange(foundRow, 10).setValue(p.deliveredAt || '');
+        } else {
+          // Agregar nuevo registro
+          sheet.appendRow([
+            p.packageId, p.code, p.qrCode, p.client, p.category,
+            p.location, p.status, p.deliveredTo || '', p.createdAt, p.deliveredAt || ''
+          ]);
+        }
+      });
+      
+      return ContentService.createTextOutput(JSON.stringify({ success: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}

@@ -1,0 +1,8 @@
+.nav-btn.active {
+  color: #2563eb;
+  font-weight: bold;
+}
+#reader video {
+  object-fit: cover !important;
+  border-radius: 0.75rem;
+}

@@ -1,4 +1,4 @@
-// Manejo de lectura (GET): Descargar datos de Google Sheets
+// Lectura de datos (GET)
 function doGet(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -10,7 +10,6 @@ function doGet(e) {
     }
     
     var data = sheet.getDataRange().getValues();
-    var headers = data[0];
     var packages = [];
     
     for (var i = 1; i < data.length; i++) {
@@ -25,7 +24,8 @@ function doGet(e) {
         status: String(row[6]),
         deliveredTo: String(row[7] || ''),
         createdAt: String(row[8] || ''),
-        deliveredAt: String(row[9] || '')
+        deliveredAt: String(row[9] || ''),
+        amountCharged: Number(row[10] || 0)
       });
     }
     
@@ -37,7 +37,7 @@ function doGet(e) {
   }
 }
 
-// Manejo de escritura (POST): Sincronizar en lote (Mantiene lo de Fase 1)
+// Escritura/Sincronización en Lote (POST)
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -49,7 +49,7 @@ function doPost(e) {
       if (sheet.getLastRow() === 0) {
         sheet.appendRow([
           'packageId', 'code', 'qrCode', 'client', 'category', 
-          'location', 'status', 'deliveredTo', 'createdAt', 'deliveredAt'
+          'location', 'status', 'deliveredTo', 'createdAt', 'deliveredAt', 'amountCharged'
         ]);
       }
       
@@ -72,10 +72,11 @@ function doPost(e) {
           sheet.getRange(foundRow, 7).setValue(p.status);
           sheet.getRange(foundRow, 8).setValue(p.deliveredTo || '');
           sheet.getRange(foundRow, 10).setValue(p.deliveredAt || '');
+          sheet.getRange(foundRow, 11).setValue(p.amountCharged || 0);
         } else {
           sheet.appendRow([
             p.packageId, p.code, p.qrCode, p.client, p.category,
-            p.location, p.status, p.deliveredTo || '', p.createdAt, p.deliveredAt || ''
+            p.location, p.status, p.deliveredTo || '', p.createdAt, p.deliveredAt || '', p.amountCharged || 0
           ]);
         }
       });

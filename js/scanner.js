@@ -28,7 +28,7 @@ class ScannerManager {
   async scanToInput(inputId) {
     this.targetInputId = inputId;
     this.currentMode = 'INPUT';
-    await this.open('Escanear Ubicación');
+    await this.open('Escanear Código QR');
   }
 
   async scanLocation() {
@@ -49,20 +49,27 @@ class ScannerManager {
   async onScanSuccess(text) {
     await this.close();
     
+    // Limpiar prefijo PT: si proviene de un código formateado
+    const cleanText = text.replace(/^PT:/i, '');
+
     if (this.currentMode === 'INPUT') {
-      document.getElementById(this.targetInputId).value = text;
+      const target = document.getElementById(this.targetInputId);
+      if (target) {
+        target.value = cleanText;
+        target.dispatchEvent(new Event('input'));
+      }
     } 
     else if (this.currentMode === 'FIX_LOC') {
-      document.getElementById('inv-fixed-loc').textContent = text;
+      document.getElementById('inv-fixed-loc').textContent = cleanText;
       document.getElementById('btn-scan-pkg').disabled = false;
       document.getElementById('inv-scanned-list').innerHTML = '';
     } 
     else if (this.currentMode === 'INV_PKG') {
       const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
-      app.updatePackageLocation(text, fixedLoc);
+      app.updatePackageLocation(cleanText, fixedLoc);
     }
     else if (this.currentMode === 'DELIVERY') {
-      app.prepareDelivery(text);
+      app.prepareDelivery(cleanText);
     }
   }
 }

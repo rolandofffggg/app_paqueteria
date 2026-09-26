@@ -5,6 +5,7 @@ class App {
     this.currentCalculatedAmount = 0;
     this.selectedShelf = null;
     this.selectedRow = null;
+    this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
   }
 
   async init() {
@@ -12,6 +13,7 @@ class App {
     if (localStorage.getItem('pt_logged') === 'true') {
       document.getElementById('view-login').classList.add('hidden');
     }
+    await this.loadTariffSettings();
     this.initNetwork();
     this.loadDashboard();
     this.renderShelfButtons();
@@ -31,6 +33,27 @@ class App {
     }
   }
 
+  async loadTariffSettings() {
+    const saved = await db.get('settings', 'tariffs');
+    if (saved) {
+      this.tariffs = saved.value;
+    }
+    document.getElementById('cfg-rate-base').value = this.tariffs.baseRate;
+    document.getElementById('cfg-grace-days').value = this.tariffs.graceDays;
+    document.getElementById('cfg-rate-penalty').value = this.tariffs.dailyPenalty;
+  }
+
+  async saveTariffSettings(e) {
+    e.preventDefault();
+    this.tariffs = {
+      baseRate: parseFloat(document.getElementById('cfg-rate-base').value) || 0,
+      graceDays: parseInt(document.getElementById('cfg-grace-days').value) || 0,
+      dailyPenalty: parseFloat(document.getElementById('cfg-rate-penalty').value) || 0
+    };
+    await db.put('settings', { key: 'tariffs', value: this.tariffs });
+    alert('¡Parámetros tarifarios guardados correctamente!');
+  }
+
   initNetwork() {
     const updateNet = () => {
       const online = navigator.onLine;
@@ -47,17 +70,15 @@ class App {
   }
 
   showSec(secId) {
-    ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery'].forEach(id => {
+    ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery', 'sec-settings'].forEach(id => {
       document.getElementById(id).classList.add('hidden');
     });
     document.getElementById(secId).classList.remove('hidden');
   }
 
-  // Renderizar 10 Estantes (E1 - E10)
   renderShelfButtons() {
     const shelfContainer = document.getElementById('shelf-buttons');
     if (!shelfContainer) return;
-
     shelfContainer.innerHTML = '';
     for (let i = 1; i <= 10; i++) {
       const btn = document.createElement('button');
@@ -78,11 +99,9 @@ class App {
     this.updateLocationInput();
   }
 
-  // Renderizar 5 Filas (F1 - F5)
   renderRowButtons() {
     const rowContainer = document.getElementById('row-buttons');
     if (!rowContainer) return;
-
     rowContainer.innerHTML = '';
     for (let i = 1; i <= 5; i++) {
       const btn = document.createElement('button');
@@ -111,22 +130,33 @@ class App {
     }
   }
 
-  // Sugerencias de clientes dinámicas
+  // Inventario Manual
+  setFixedLocationManual() {
+    const val = document.getElementById('inv-loc-input').value.trim();
+    if (!val) { alert('Ingrese una ubicación válida'); return; }
+    document.getElementById('inv-fixed-loc').textContent = val;
+    document.getElementById('btn-scan-pkg').disabled = false;
+    document.getElementById('btn-add-inv-pkg').disabled = false;
+    document.getElementById('inv-scanned-list').innerHTML = '';
+  }
+
+  async processInventoryManual() {
+    const code = document.getElementById('inv-pkg-input').value.trim();
+    const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
+    if (!code) { alert('Ingrese un código de paquete'); return; }
+    await this.updatePackageLocation(code, fixedLoc);
+    document.getElementById('inv-pkg-input').value = '';
+  }
+
   async handleClientAutocomplete(value) {
     const listEl = document.getElementById('client-suggestions');
-    if (!value || value.trim().length < 2) {
-      listEl.classList.add('hidden');
-      return;
-    }
+    if (!value || value.trim().length < 2) { listEl.classList.add('hidden'); return; }
 
     const packages = await db.getAll('packages');
     const clients = [...new Set(packages.map(p => p.client).filter(Boolean))];
     const matches = clients.filter(c => c.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
 
-    if (matches.length === 0) {
-      listEl.classList.add('hidden');
-      return;
-    }
+    if (matches.length === 0) { listEl.classList.add('hidden'); return; }
 
     listEl.innerHTML = matches.map(c => `
       <div onclick="app.selectClientSuggestion('${c.replace(/'/g, "\\'")}')" class="p-2.5 hover:bg-slate-50 cursor-pointer text-slate-700 font-medium">
@@ -141,11 +171,13 @@ class App {
     document.getElementById('client-suggestions').classList.add('hidden');
   }
 
-  // Guardar Paquete en Recepción
+  // Guardar Paquete + Envío de WhatsApp
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim();
     const clientName = document.getElementById('rec-cliente').value.trim();
+    const phoneClient = document.getElementById('rec-celular').value.trim();
+    const phoneRecipient = document.getElementById('rec-celular-dest').value.trim();
     const locationVal = document.getElementById('rec-ubicacion').value;
 
     if (!locationVal || locationVal.includes('?')) {
@@ -161,7 +193,8 @@ class App {
       code: pkgCode,
       qrCode: `PT:${pkgCode}`,
       client: clientName,
-      phone: document.getElementById('rec-celular').value.trim(),
+      phone: phoneClient,
+      recipientPhone: phoneRecipient,
       category: document.getElementById('rec-categoria').value,
       size: document.getElementById('rec-tamano').value,
       color: document.getElementById('rec-color').value,
@@ -185,7 +218,14 @@ class App {
     document.getElementById('res-client').textContent = `${pkg.client} (${new Date(creationTimestamp).toLocaleString()})`;
     document.getElementById('qr-result').classList.remove('hidden');
 
-    // Resetear formulario y selecciones
+    // Notificación por WhatsApp
+    const targetPhone = phoneRecipient || phoneClient;
+    if (targetPhone) {
+      const cleanPhone = targetPhone.replace(/\D/g, '');
+      const message = encodeURIComponent(`Hola ${clientName}, confirmamos la recepción de tu paquete #${pkg.code} en Paquetería.\n\n📍 Ubicación: ${pkg.location}\n📦 Contenido: ${pkg.category}\n🎨 Color: ${pkg.color}`);
+      window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+    }
+
     document.getElementById('form-reception').reset();
     this.selectedShelf = null;
     this.selectedRow = null;
@@ -225,6 +265,13 @@ class App {
     syncEngine.processQueue();
   }
 
+  // Búsqueda Manual de Entrega
+  async searchDeliveryManual() {
+    const code = document.getElementById('del-search-code').value.trim();
+    if (!code) { alert('Ingrese un código de paquete'); return; }
+    await this.prepareDelivery(code);
+  }
+
   async prepareDelivery(qrCode) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
@@ -236,18 +283,17 @@ class App {
 
     this.selectedDeliveryPackage = pkg;
     
+    // Cálculo Dinámico de Tarifas con Parámetros Configurables
     const createdDate = new Date(pkg.createdAt || Date.now());
     const now = new Date();
     const diffTime = Math.abs(now - createdDate);
     const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-    const tarifaBasePorDia = 2.0;
-    const diasGracia = 3;
-    const penalizacionDiaria = 1.0;
+    const { baseRate, graceDays, dailyPenalty } = this.tariffs;
 
-    const montoBase = diffDays * tarifaBasePorDia;
-    const diasRetraso = Math.max(0, diffDays - diasGracia);
-    const montoPenalizacion = diasRetraso * penalizacionDiaria;
+    const montoBase = diffDays * baseRate;
+    const diasRetraso = Math.max(0, diffDays - graceDays);
+    const montoPenalizacion = diasRetraso * dailyPenalty;
     const totalCobro = montoBase + montoPenalizacion;
 
     this.currentCalculatedAmount = totalCobro;
@@ -255,6 +301,13 @@ class App {
     document.getElementById('del-pkg-code').textContent = pkg.code;
     document.getElementById('del-pkg-client').textContent = pkg.client;
     document.getElementById('del-pkg-loc').textContent = pkg.location;
+
+    // Formato con Fecha, Hora y Minuto
+    const formattedDate = new Date(pkg.createdAt).toLocaleString('es-ES', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    document.getElementById('del-pkg-date').textContent = formattedDate;
 
     document.getElementById('calc-days').textContent = diffDays;
     document.getElementById('calc-base').textContent = `Bs. ${montoBase.toFixed(2)}`;
@@ -267,16 +320,13 @@ class App {
   async confirmDelivery() {
     if (!this.selectedDeliveryPackage) return;
 
-    const nombre = document.getElementById('del-retira-nombre').value;
-    const doc = document.getElementById('del-retira-id').value;
+    const nombre = document.getElementById('del-retira-nombre').value.trim();
+    const doc = document.getElementById('del-retira-id').value.trim();
 
-    if (!nombre || !doc) {
-      alert('Complete los datos de la persona que retira');
-      return;
-    }
+    const recipientInfo = (nombre || doc) ? `${nombre} ${doc ? '(' + doc + ')' : ''}`.trim() : 'Titular';
 
     this.selectedDeliveryPackage.status = 'ENTREGADO';
-    this.selectedDeliveryPackage.deliveredTo = `${nombre} (${doc})`;
+    this.selectedDeliveryPackage.deliveredTo = recipientInfo;
     this.selectedDeliveryPackage.deliveredAt = new Date().toISOString();
     this.selectedDeliveryPackage.amountCharged = this.currentCalculatedAmount;
 
@@ -285,6 +335,7 @@ class App {
 
     alert(`¡Entrega confirmada! Cobro realizado: Bs. ${this.currentCalculatedAmount.toFixed(2)}`);
     document.getElementById('del-details').classList.add('hidden');
+    document.getElementById('del-search-code').value = '';
     this.selectedDeliveryPackage = null;
     this.loadDashboard();
     syncEngine.processQueue();
@@ -327,7 +378,7 @@ class App {
       <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
         <div>
           <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
-          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category} | ${p.size || 'MEDIANO'} | ${p.color || 'NEGRO'}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category}</div>
           ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo} (Bs.${(p.amountCharged || 0).toFixed(2)})</div>` : ''}
         </div>
         <div class="flex flex-col items-end gap-1">
@@ -340,7 +391,7 @@ class App {
 
   async downloadReport() {
     const packages = await db.getAll('packages');
-    reports.exportToCSV(packages, `Reporte_ParcelTrack_${new Date().toISOString().split('T')[0]}.csv`);
+    reports.exportToCSV(packages, `Reporte_Paqueteria_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
   syncNow() {

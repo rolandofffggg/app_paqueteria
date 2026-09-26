@@ -1,4 +1,4 @@
-const CACHE_NAME = 'parceltrack-v3';
+const CACHE_NAME = 'parceltrack-v4';
 const ASSETS = [
   './',
   './index.html',

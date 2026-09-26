@@ -20,15 +20,16 @@ function doGet(e) {
         qrCode: String(row[2]),
         client: String(row[3]),
         phone: String(row[4] || ''),
-        category: String(row[5] || ''),
-        size: String(row[6] || ''),
-        color: String(row[7] || ''),
-        location: String(row[8] || ''),
-        status: String(row[9] || ''),
-        deliveredTo: String(row[10] || ''),
-        createdAt: String(row[11] || ''),
-        deliveredAt: String(row[12] || ''),
-        amountCharged: Number(row[13] || 0)
+        recipientPhone: String(row[5] || ''),
+        category: String(row[6] || ''),
+        size: String(row[7] || ''),
+        color: String(row[8] || ''),
+        location: String(row[9] || ''),
+        status: String(row[10] || ''),
+        deliveredTo: String(row[11] || ''),
+        createdAt: String(row[12] || ''),
+        deliveredAt: String(row[13] || ''),
+        amountCharged: Number(row[14] || 0)
       });
     }
     
@@ -51,7 +52,7 @@ function doPost(e) {
       
       if (sheet.getLastRow() === 0) {
         sheet.appendRow([
-          'packageId', 'code', 'qrCode', 'client', 'phone', 
+          'packageId', 'code', 'qrCode', 'client', 'phone', 'recipientPhone',
           'category', 'size', 'color', 'location', 'status', 
           'deliveredTo', 'createdAt', 'deliveredAt', 'amountCharged'
         ]);
@@ -72,14 +73,14 @@ function doPost(e) {
         }
         
         if (foundRow > -1) {
-          sheet.getRange(foundRow, 9).setValue(p.location);
-          sheet.getRange(foundRow, 10).setValue(p.status);
-          sheet.getRange(foundRow, 11).setValue(p.deliveredTo || '');
-          sheet.getRange(foundRow, 13).setValue(p.deliveredAt || '');
-          sheet.getRange(foundRow, 14).setValue(p.amountCharged || 0);
+          sheet.getRange(foundRow, 10).setValue(p.location);
+          sheet.getRange(foundRow, 11).setValue(p.status);
+          sheet.getRange(foundRow, 12).setValue(p.deliveredTo || '');
+          sheet.getRange(foundRow, 14).setValue(p.deliveredAt || '');
+          sheet.getRange(foundRow, 15).setValue(p.amountCharged || 0);
         } else {
           sheet.appendRow([
-            p.packageId, p.code, p.qrCode, p.client, p.phone || '',
+            p.packageId, p.code, p.qrCode, p.client, p.phone || '', p.recipientPhone || '',
             p.category || '', p.size || '', p.color || '', p.location, p.status,
             p.deliveredTo || '', p.createdAt, p.deliveredAt || '', p.amountCharged || 0
           ]);

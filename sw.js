@@ -1,4 +1,4 @@
-const CACHE_NAME = 'parceltrack-v4';
+const CACHE_NAME = 'paqueteria-v5';
 const ASSETS = [
   './',
   './index.html',

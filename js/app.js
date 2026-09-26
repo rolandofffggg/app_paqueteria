@@ -3,6 +3,8 @@ class App {
     this.selectedDeliveryPackage = null;
     this.lastCreatedPackage = null;
     this.currentCalculatedAmount = 0;
+    this.selectedShelf = null;
+    this.selectedRow = null;
   }
 
   async init() {
@@ -12,6 +14,7 @@ class App {
     }
     this.initNetwork();
     this.loadDashboard();
+    this.renderShelfButtons();
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
@@ -50,21 +53,121 @@ class App {
     document.getElementById(secId).classList.remove('hidden');
   }
 
+  // Renderizar 10 Estantes (E1 - E10)
+  renderShelfButtons() {
+    const shelfContainer = document.getElementById('shelf-buttons');
+    if (!shelfContainer) return;
+
+    shelfContainer.innerHTML = '';
+    for (let i = 1; i <= 10; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `shelf-btn p-2 text-xs font-bold rounded-lg border transition ${this.selectedShelf === `E${i}` ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      btn.textContent = `E${i}`;
+      btn.onclick = () => this.selectShelf(`E${i}`);
+      shelfContainer.appendChild(btn);
+    }
+  }
+
+  selectShelf(shelf) {
+    this.selectedShelf = shelf;
+    this.selectedRow = null;
+    this.renderShelfButtons();
+    this.renderRowButtons();
+    document.getElementById('rows-container').classList.remove('hidden');
+    this.updateLocationInput();
+  }
+
+  // Renderizar 5 Filas (F1 - F5)
+  renderRowButtons() {
+    const rowContainer = document.getElementById('row-buttons');
+    if (!rowContainer) return;
+
+    rowContainer.innerHTML = '';
+    for (let i = 1; i <= 5; i++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `row-btn p-2 text-xs font-bold rounded-lg border transition ${this.selectedRow === `F${i}` ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      btn.textContent = `F${i}`;
+      btn.onclick = () => this.selectRow(`F${i}`);
+      rowContainer.appendChild(btn);
+    }
+  }
+
+  selectRow(row) {
+    this.selectedRow = row;
+    this.renderRowButtons();
+    this.updateLocationInput();
+  }
+
+  updateLocationInput() {
+    const input = document.getElementById('rec-ubicacion');
+    if (this.selectedShelf && this.selectedRow) {
+      input.value = `${this.selectedShelf}-${this.selectedRow}`;
+    } else if (this.selectedShelf) {
+      input.value = `${this.selectedShelf}-?`;
+    } else {
+      input.value = '';
+    }
+  }
+
+  // Sugerencias de clientes dinámicas
+  async handleClientAutocomplete(value) {
+    const listEl = document.getElementById('client-suggestions');
+    if (!value || value.trim().length < 2) {
+      listEl.classList.add('hidden');
+      return;
+    }
+
+    const packages = await db.getAll('packages');
+    const clients = [...new Set(packages.map(p => p.client).filter(Boolean))];
+    const matches = clients.filter(c => c.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
+
+    if (matches.length === 0) {
+      listEl.classList.add('hidden');
+      return;
+    }
+
+    listEl.innerHTML = matches.map(c => `
+      <div onclick="app.selectClientSuggestion('${c.replace(/'/g, "\\'")}')" class="p-2.5 hover:bg-slate-50 cursor-pointer text-slate-700 font-medium">
+        👤 ${c}
+      </div>
+    `).join('');
+    listEl.classList.remove('hidden');
+  }
+
+  selectClientSuggestion(clientName) {
+    document.getElementById('rec-cliente').value = clientName;
+    document.getElementById('client-suggestions').classList.add('hidden');
+  }
+
+  // Guardar Paquete en Recepción
   async savePackage(e) {
     e.preventDefault();
-    const packages = await db.getAll('packages');
-    const nextNum = (packages.length + 1).toString().padStart(5, '0');
+    const pkgCode = document.getElementById('rec-codigo').value.trim();
+    const clientName = document.getElementById('rec-cliente').value.trim();
+    const locationVal = document.getElementById('rec-ubicacion').value;
+
+    if (!locationVal || locationVal.includes('?')) {
+      alert('Por favor complete la selección de Estante y Fila.');
+      return;
+    }
+
     const pkgId = 'PKG-' + Date.now();
+    const creationTimestamp = new Date().toISOString();
 
     const pkg = {
       packageId: pkgId,
-      code: nextNum,
-      qrCode: `PT:${pkgId}`,
-      client: document.getElementById('rec-cliente').value,
+      code: pkgCode,
+      qrCode: `PT:${pkgCode}`,
+      client: clientName,
+      phone: document.getElementById('rec-celular').value.trim(),
       category: document.getElementById('rec-categoria').value,
-      location: document.getElementById('rec-ubicacion').value,
+      size: document.getElementById('rec-tamano').value,
+      color: document.getElementById('rec-color').value,
+      location: locationVal,
       status: 'PENDIENTE',
-      createdAt: new Date().toISOString(),
+      createdAt: creationTimestamp,
       amountCharged: 0
     };
 
@@ -79,10 +182,16 @@ class App {
     
     document.getElementById('qrcode-target').innerHTML = qr.createImgTag(5);
     document.getElementById('res-code').textContent = pkg.code;
-    document.getElementById('res-client').textContent = pkg.client;
+    document.getElementById('res-client').textContent = `${pkg.client} (${new Date(creationTimestamp).toLocaleString()})`;
     document.getElementById('qr-result').classList.remove('hidden');
 
+    // Resetear formulario y selecciones
     document.getElementById('form-reception').reset();
+    this.selectedShelf = null;
+    this.selectedRow = null;
+    this.renderShelfButtons();
+    document.getElementById('rows-container').classList.add('hidden');
+
     this.loadDashboard();
     syncEngine.processQueue();
   }
@@ -116,7 +225,6 @@ class App {
     syncEngine.processQueue();
   }
 
-  // Prepara la entrega y realiza el cálculo monetario
   async prepareDelivery(qrCode) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
@@ -128,15 +236,14 @@ class App {
 
     this.selectedDeliveryPackage = pkg;
     
-    // Cálculo de Días y Tarifa
     const createdDate = new Date(pkg.createdAt || Date.now());
     const now = new Date();
     const diffTime = Math.abs(now - createdDate);
     const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
-    const tarifaBasePorDia = 2.0; // Bs. 2 por día
+    const tarifaBasePorDia = 2.0;
     const diasGracia = 3;
-    const penalizacionDiaria = 1.0; // Bs. 1 por día extra
+    const penalizacionDiaria = 1.0;
 
     const montoBase = diffDays * tarifaBasePorDia;
     const diasRetraso = Math.max(0, diffDays - diasGracia);
@@ -220,7 +327,7 @@ class App {
       <div class="bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
         <div>
           <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
-          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category}</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category} | ${p.size || 'MEDIANO'} | ${p.color || 'NEGRO'}</div>
           ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo} (Bs.${(p.amountCharged || 0).toFixed(2)})</div>` : ''}
         </div>
         <div class="flex flex-col items-end gap-1">

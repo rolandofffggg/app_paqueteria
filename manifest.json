@@ -1,7 +1,7 @@
 {
-  "name": "ParcelTrack PWA MVP",
-  "short_name": "ParcelTrack",
-  "description": "Sistema básico offline-first de control de paquetes",
+  "name": "Paquetería PWA",
+  "short_name": "Paquetería",
+  "description": "Sistema de Control de Paquetes y Logística",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",

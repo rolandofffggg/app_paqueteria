@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0f172a">
-  <title>ParcelTrack PWA</title>
+  <title>Paquetería PWA</title>
   <link rel="manifest" href="./manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -16,7 +16,7 @@
   <!-- Header -->
   <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
     <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-      <h1 class="text-lg font-bold tracking-wide text-blue-400">📦 ParcelTrack</h1>
+      <h1 class="text-lg font-bold tracking-wide text-blue-400">📦 Paquetería</h1>
       <div class="flex items-center space-x-2 text-xs">
         <span id="net-status" class="px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
         <span id="sync-status" class="hidden px-2 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Sync...</span>
@@ -60,7 +60,6 @@
         </div>
       </div>
 
-      <!-- Buscador y Filtros -->
       <div class="space-y-2 pt-2">
         <div class="flex justify-between items-center">
           <h3 class="text-sm font-bold text-slate-700">Listado de Paquetes</h3>
@@ -84,25 +83,31 @@
       </div>
     </section>
 
-    <!-- Recepción View (Fase 4: Formulario Mejorado) -->
+    <!-- Recepción View -->
     <section id="sec-reception" class="space-y-4 hidden">
       <h2 class="text-lg font-bold text-slate-700">Registrar Nuevo Paquete</h2>
       <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
         
-        <!-- 1. Cliente con Sugerencias -->
+        <!-- Cliente -->
         <div class="relative">
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Cliente *</label>
           <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
           <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
         </div>
 
-        <!-- 2. Celular (Opcional) -->
-        <div>
-          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Celular / Teléfono</label>
-          <input type="tel" id="rec-celular" placeholder="Ej: 70012345" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+        <!-- Celular Cliente & Destinatario -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Celular Cliente</label>
+            <input type="tel" id="rec-celular" placeholder="Ej: 70012345" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Celular Destinatario</label>
+            <input type="tel" id="rec-celular-dest" placeholder="Ej: 70098765" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+          </div>
         </div>
 
-        <!-- 3. Código de Paquete (Manual + Escáner QR) -->
+        <!-- Código de Paquete -->
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Código de Paquete *</label>
           <div class="flex gap-2">
@@ -113,7 +118,7 @@
           </div>
         </div>
 
-        <!-- 4. Atributos del Paquete (Listas Desplegables) -->
+        <!-- Atributos -->
         <div class="grid grid-cols-3 gap-2">
           <div>
             <label class="block text-[10px] font-bold text-slate-600 uppercase mb-1">Contenido</label>
@@ -148,29 +153,22 @@
           </div>
         </div>
 
-        <!-- 5. Selector de Ubicación (Estantes E1-E10 y Filas F1-F5) -->
+        <!-- Ubicación -->
         <div>
           <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Ubicación Seleccionada *</label>
           <input type="text" id="rec-ubicacion" readonly required placeholder="Seleccione Estante y Fila" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-sm mb-2 text-center">
 
-          <!-- Estantes (10 botones) -->
           <div class="mb-2">
             <span class="block text-[10px] text-slate-400 font-bold mb-1">1. Seleccionar Estante:</span>
-            <div id="shelf-buttons" class="grid grid-cols-5 gap-1">
-              <!-- Renderizado dinámico en JS -->
-            </div>
+            <div id="shelf-buttons" class="grid grid-cols-5 gap-1"></div>
           </div>
 
-          <!-- Filas (Aparecen al elegir estante) -->
           <div id="rows-container" class="hidden">
             <span class="block text-[10px] text-slate-400 font-bold mb-1">2. Seleccionar Fila:</span>
-            <div id="row-buttons" class="grid grid-cols-5 gap-1">
-              <!-- Renderizado dinámico en JS -->
-            </div>
+            <div id="row-buttons" class="grid grid-cols-5 gap-1"></div>
           </div>
         </div>
 
-        <!-- 6. Guardar Registro -->
         <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition mt-2">
           💾 Guardar Registro de Paquete
         </button>
@@ -189,93 +187,150 @@
       </div>
     </section>
 
-    <!-- Inventario View -->
+    <!-- Inventario View (Manual + QR) -->
     <section id="sec-inventory" class="space-y-4 hidden">
       <h2 class="text-lg font-bold text-slate-700">Inventario por Ubicación</h2>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        
+        <!-- 1. Código Ubicación -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Código Ubicación *</label>
+          <div class="flex gap-2">
+            <input type="text" id="inv-loc-input" placeholder="Ej: E1-F2" class="flex-1 px-3 py-2 border rounded-lg text-xs font-mono">
+            <button onclick="app.setFixedLocationManual()" class="bg-blue-600 text-white px-2 py-1 rounded-lg text-xs font-semibold">Fijar</button>
+            <button onclick="scanner.scanLocation()" class="bg-slate-800 text-white px-2 py-1 rounded-lg text-xs font-semibold">📷 Scan</button>
+          </div>
+        </div>
+
         <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border">
           <span class="text-xs font-bold text-slate-500">UBICACIÓN FIJA:</span>
           <span id="inv-fixed-loc" class="font-mono font-bold text-blue-600">NINGUNA</span>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="scanner.scanLocation()" class="bg-slate-800 text-white py-2 px-3 rounded-lg text-xs font-semibold">1. Escanear Ubicación</button>
-          <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="bg-blue-600 disabled:bg-slate-300 text-white py-2 px-3 rounded-lg text-xs font-semibold">2. Escanear Paquete</button>
+
+        <!-- 2. Código Paquete -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Código Paquete *</label>
+          <div class="flex gap-2">
+            <input type="text" id="inv-pkg-input" placeholder="Ej: 00001" class="flex-1 px-3 py-2 border rounded-lg text-xs font-mono">
+            <button onclick="app.processInventoryManual()" id="btn-add-inv-pkg" disabled class="bg-emerald-600 disabled:bg-slate-300 text-white px-2 py-1 rounded-lg text-xs font-semibold">Verificar</button>
+            <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="bg-slate-800 disabled:bg-slate-300 text-white px-2 py-1 rounded-lg text-xs font-semibold">📷 Scan</button>
+          </div>
         </div>
       </div>
 
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <h3 class="text-xs font-bold text-slate-500 uppercase mb-2">Paquetes Verificados</h3>
         <ul id="inv-scanned-list" class="divide-y divide-slate-100 text-xs">
-          <li class="py-2 text-slate-400 text-center">Inicie el escaneo de ubicación</li>
+          <li class="py-2 text-slate-400 text-center">Fije la ubicación para comenzar.</li>
         </ul>
       </div>
     </section>
 
-    <!-- Entrega View -->
+    <!-- Entrega View (Búsqueda Manual + Opcionales) -->
     <section id="sec-delivery" class="space-y-4 hidden">
       <h2 class="text-lg font-bold text-slate-700">Entrega de Paquete</h2>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <button onclick="scanner.scanForDelivery()" class="w-full bg-slate-800 text-white font-semibold py-3 rounded-xl text-xs flex justify-center items-center gap-2">
-          <span>📷</span> Escanear QR de Paquete
-        </button>
+        
+        <!-- Búsqueda Manual / Escáner Código -->
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Código de Paquete *</label>
+          <div class="flex gap-2">
+            <input type="text" id="del-search-code" placeholder="Ingrese código o escanee" class="flex-1 px-3 py-2 border rounded-lg text-xs font-mono">
+            <button onclick="app.searchDeliveryManual()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold">Buscar</button>
+            <button onclick="scanner.scanForDelivery()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1">
+              📷 QR
+            </button>
+          </div>
+        </div>
 
         <div id="del-details" class="hidden space-y-3 border-t pt-3">
+          <!-- Detalle Enriquecido con Fecha/Hora/Minuto -->
           <div class="bg-blue-50 p-3 rounded-lg text-xs space-y-1">
             <p><strong>Código:</strong> <span id="del-pkg-code" class="font-mono"></span></p>
             <p><strong>Cliente:</strong> <span id="del-pkg-client"></span></p>
             <p><strong>Ubicación:</strong> <span id="del-pkg-loc"></span></p>
+            <p><strong>Recepción:</strong> <span id="del-pkg-date" class="text-blue-700 font-medium"></span></p>
           </div>
 
+          <!-- Tarifas Calc -->
           <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs space-y-1">
             <div class="flex justify-between">
               <span class="text-slate-500">Días en almacén:</span>
               <span id="calc-days" class="font-bold text-slate-700">1</span>
             </div>
             <div class="flex justify-between">
-              <span class="text-slate-500">Tarifa resguardo (Bs. 2/día):</span>
-              <span id="calc-base" class="font-bold text-slate-700">Bs. 2.00</span>
+              <span class="text-slate-500">Tarifa base resguardo:</span>
+              <span id="calc-base" class="font-bold text-slate-700">Bs. 0.00</span>
             </div>
             <div class="flex justify-between text-amber-600">
-              <span>Penalización retraso (>3 días):</span>
+              <span>Penalización retraso:</span>
               <span id="calc-penalty" class="font-bold">Bs. 0.00</span>
             </div>
             <hr class="my-1">
             <div class="flex justify-between text-sm font-black text-slate-800">
               <span>TOTAL A COBRAR:</span>
-              <span id="calc-total" class="text-emerald-600">Bs. 2.00</span>
+              <span id="calc-total" class="text-emerald-600">Bs. 0.00</span>
             </div>
           </div>
 
+          <!-- Opcionales -->
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre de quien retira</label>
-            <input type="text" id="del-retira-nombre" required placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre de quien retira (Opcional)</label>
+            <input type="text" id="del-retira-nombre" placeholder="Nombre completo" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Identificación (CI / DNI)</label>
-            <input type="text" id="del-retira-id" required placeholder="Nº de documento" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
+            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Identificación / CI (Opcional)</label>
+            <input type="text" id="del-retira-id" placeholder="Nº de documento" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-sm">
           </div>
 
-          <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Confirmar Entrega y Cobro</button>
+          <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">
+            Confirmar Entrega y Cobro
+          </button>
         </div>
       </div>
+    </section>
+
+    <!-- Parámetros / Configuración View -->
+    <section id="sec-settings" class="space-y-4 hidden">
+      <h2 class="text-lg font-bold text-slate-700">Parámetros de Tarifas</h2>
+      <form onsubmit="app.saveTariffSettings(event)" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Tarifa Base por Día (Bs.)</label>
+          <input type="number" step="0.5" id="cfg-rate-base" required class="w-full px-3 py-2 border rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Días de Gracia (Sin penalización)</label>
+          <input type="number" id="cfg-grace-days" required class="w-full px-3 py-2 border rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Penalización Diaria por Retraso (Bs.)</label>
+          <input type="number" step="0.5" id="cfg-rate-penalty" required class="w-full px-3 py-2 border rounded-lg text-sm">
+        </div>
+        <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900 transition text-xs">
+          💾 Guardar Parámetros Tarifarios
+        </button>
+      </form>
     </section>
 
   </main>
 
   <!-- Navigation Bar Mobile -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-16 shadow-lg">
-    <div class="max-w-md mx-auto h-full grid grid-cols-4 text-center">
+    <div class="max-w-md mx-auto h-full grid grid-cols-5 text-center">
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-lg">📊</span><span class="text-[10px]">Dashboard</span>
+        <span class="text-base">📊</span><span class="text-[9px]">Inicio</span>
       </button>
       <button onclick="app.showSec('sec-reception')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-lg">📦</span><span class="text-[10px]">Recepción</span>
+        <span class="text-base">📦</span><span class="text-[9px]">Recepción</span>
       </button>
       <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-lg">📋</span><span class="text-[10px]">Inventario</span>
+        <span class="text-base">📋</span><span class="text-[9px]">Inventario</span>
       </button>
       <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-lg">🚚</span><span class="text-[10px]">Entrega</span>
+        <span class="text-base">🚚</span><span class="text-[9px]">Entrega</span>
+      </button>
+      <button onclick="app.showSec('sec-settings')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-base">⚙️</span><span class="text-[9px]">Ajustes</span>
       </button>
     </div>
   </nav>

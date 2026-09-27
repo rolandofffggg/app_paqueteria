@@ -76,6 +76,7 @@ class App {
     document.getElementById(secId).classList.remove('hidden');
   }
 
+  // Genera y renderiza los 10 botones de Estantes (E1 a E10)
   renderShelfButtons() {
     const shelfContainer = document.getElementById('shelf-buttons');
     if (!shelfContainer) return;
@@ -83,22 +84,26 @@ class App {
     for (let i = 1; i <= 10; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `shelf-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedShelf === `E${i}` ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      btn.className = `shelf-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedShelf === `E${i}` ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
       btn.textContent = `E${i}`;
       btn.onclick = () => this.selectShelf(`E${i}`);
       shelfContainer.appendChild(btn);
     }
   }
 
+  // Al hacer clic en un Estante, se activa la visualización de las Filas (F1 a F5)
   selectShelf(shelf) {
     this.selectedShelf = shelf;
     this.selectedRow = null;
     this.renderShelfButtons();
     this.renderRowButtons();
+    
+    // Muestra el contenedor de Filas al seleccionar un Estante
     document.getElementById('rows-container').classList.remove('hidden');
     this.updateLocationInput();
   }
 
+  // Genera y renderiza los 5 botones de Filas (F1 a F5)
   renderRowButtons() {
     const rowContainer = document.getElementById('row-buttons');
     if (!rowContainer) return;
@@ -106,7 +111,7 @@ class App {
     for (let i = 1; i <= 5; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `row-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedRow === `F${i}` ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
+      btn.className = `row-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedRow === `F${i}` ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
       btn.textContent = `F${i}`;
       btn.onclick = () => this.selectRow(`F${i}`);
       rowContainer.appendChild(btn);
@@ -119,6 +124,7 @@ class App {
     this.updateLocationInput();
   }
 
+  // Actualiza dinámicamente el valor del input Ubicación Seleccionada
   updateLocationInput() {
     const input = document.getElementById('rec-ubicacion');
     if (this.selectedShelf && this.selectedRow) {
@@ -170,7 +176,6 @@ class App {
     document.getElementById('client-suggestions').classList.add('hidden');
   }
 
-  // Guardar Paquete + Manejo del Checkbox de Persistencia de Cliente
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim();
@@ -222,7 +227,6 @@ class App {
     document.getElementById('res-client').textContent = `${pkg.client} (${new Date(creationTimestamp).toLocaleString()})`;
     document.getElementById('qr-result').classList.remove('hidden');
 
-    // Notificación por WhatsApp
     const targetPhone = phoneRecipient || phoneClient;
     if (targetPhone) {
       const cleanPhone = targetPhone.replace(/\D/g, '');
@@ -230,7 +234,6 @@ class App {
       window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
     }
 
-    // Resetear formulario respetando el checkbox de fijado de cliente
     if (keepClient) {
       document.getElementById('rec-codigo').value = '';
       document.getElementById('rec-celular-dest').value = '';
@@ -242,6 +245,7 @@ class App {
       document.getElementById('form-reception').reset();
     }
 
+    // Reset de la selección de ubicación
     this.selectedShelf = null;
     this.selectedRow = null;
     this.renderShelfButtons();

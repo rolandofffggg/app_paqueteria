@@ -1,11 +1,10 @@
 const DB_NAME = 'ParcelTrackDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Versión incrementada para incluir settings
 
 class LocalDB {
   constructor() {
     this.db = null;
   }
-
   async init() {
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -23,10 +22,12 @@ class LocalDB {
         if (!db.objectStoreNames.contains('syncQueue')) {
           db.createObjectStore('syncQueue', { keyPath: 'id' });
         }
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'key' });
+        }
       };
     });
   }
-
   async get(storeName, key) {
     return new Promise((resolve) => {
       const tx = this.db.transaction(storeName, 'readonly');
@@ -35,7 +36,6 @@ class LocalDB {
       req.onsuccess = () => resolve(req.result || null);
     });
   }
-
   async getAll(storeName) {
     return new Promise((resolve) => {
       const tx = this.db.transaction(storeName, 'readonly');
@@ -44,7 +44,6 @@ class LocalDB {
       req.onsuccess = () => resolve(req.result || []);
     });
   }
-
   async put(storeName, data) {
     return new Promise((resolve) => {
       const tx = this.db.transaction(storeName, 'readwrite');
@@ -53,7 +52,6 @@ class LocalDB {
       tx.oncomplete = () => resolve();
     });
   }
-
   async delete(storeName, id) {
     return new Promise((resolve) => {
       const tx = this.db.transaction(storeName, 'readwrite');
@@ -63,5 +61,4 @@ class LocalDB {
     });
   }
 }
-
 const db = new LocalDB();

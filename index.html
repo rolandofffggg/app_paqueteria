@@ -87,10 +87,16 @@
     <section id="sec-reception" class="space-y-3 hidden">
       <div class="flex justify-between items-center">
         <h2 class="text-base font-bold text-slate-700">Registrar Nuevo Paquete</h2>
-        <label class="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-          <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
-          <span class="text-[11px] font-medium">Fijar Cliente</span>
-        </label>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" id="chk-send-wa" checked class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
+            <span class="text-[10px] font-medium text-emerald-700">📲 Notificar WhatsApp</span>
+          </label>
+          <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+            <span class="text-[10px] font-medium">Fijar Cliente</span>
+          </label>
+        </div>
       </div>
 
       <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
@@ -107,7 +113,7 @@
             <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
           </div>
           <div>
-            <input type="tel" id="rec-celular-dest" placeholder="Celular Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="tel" id="rec-celular-dest" placeholder="Celular Remitente/Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
           </div>
         </div>
 
@@ -156,24 +162,20 @@
           </div>
         </div>
 
-        <!-- Selector de Ubicación (Estantes E1-E10 y Filas F1-F5) -->
+        <!-- Selector de Ubicación -->
         <div>
           <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación Seleccionada (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
 
           <!-- Estantes -->
           <div class="mb-2">
             <span class="block text-[10px] text-slate-500 font-bold mb-1">1. Seleccionar Estante:</span>
-            <div id="shelf-buttons" class="grid grid-cols-5 gap-1">
-              <!-- Renderizado dinámico en JS -->
-            </div>
+            <div id="shelf-buttons" class="grid grid-cols-5 gap-1"></div>
           </div>
 
-          <!-- Filas (Aparecen al elegir estante) -->
+          <!-- Filas -->
           <div id="rows-container" class="hidden">
             <span class="block text-[10px] text-slate-500 font-bold mb-1">2. Seleccionar Fila:</span>
-            <div id="row-buttons" class="grid grid-cols-5 gap-1">
-              <!-- Renderizado dinámico en JS -->
-            </div>
+            <div id="row-buttons" class="grid grid-cols-5 gap-1"></div>
           </div>
         </div>
 
@@ -281,6 +283,83 @@
       </div>
     </section>
 
+    <!-- Novedad Fase 7: Gestión de Registros View -->
+    <section id="sec-manage" class="space-y-3 hidden">
+      <h2 class="text-base font-bold text-slate-700">Gestión de Registros</h2>
+      
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+        <input type="text" id="manage-search" oninput="app.loadManageList()" placeholder="Buscar paquete por código, cliente o ubicación..." class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <div id="manage-list" class="space-y-2">
+        <p class="text-xs text-slate-400 text-center py-4">Cargando registros...</p>
+      </div>
+    </section>
+
+    <!-- Modal Editar Registro -->
+    <div id="modal-edit-pkg" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl p-4 w-full max-w-sm shadow-xl space-y-3">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h3 class="text-xs font-bold text-slate-800">Editar Paquete #<span id="edit-pkg-code-title"></span></h3>
+          <button onclick="app.closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
+        </div>
+
+        <form onsubmit="app.saveEditedPackage(event)" class="space-y-2 text-xs">
+          <input type="hidden" id="edit-pkg-id">
+
+          <div>
+            <label class="block font-semibold text-slate-600 mb-0.5">Cliente</label>
+            <input type="text" id="edit-client" required class="w-full px-2.5 py-1.5 border rounded-lg">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Celular Cliente</label>
+              <input type="tel" id="edit-phone" class="w-full px-2 py-1.5 border rounded-lg">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Celular Remitente</label>
+              <input type="tel" id="edit-recipient-phone" class="w-full px-2 py-1.5 border rounded-lg">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Ubicación</label>
+              <input type="text" id="edit-location" required class="w-full px-2 py-1.5 border rounded-lg font-mono">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Estado</label>
+              <select id="edit-status" class="w-full px-2 py-1.5 border rounded-lg bg-white">
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="ENTREGADO">ENTREGADO</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-1.5">
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Categoría</label>
+              <input type="text" id="edit-category" class="w-full px-1.5 py-1.5 border rounded-lg">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Tamaño</label>
+              <input type="text" id="edit-size" class="w-full px-1.5 py-1.5 border rounded-lg">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-600 mb-0.5">Color</label>
+              <input type="text" id="edit-color" class="w-full px-1.5 py-1.5 border rounded-lg">
+            </div>
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700">Guardar Cambios</button>
+            <button type="button" onclick="app.closeEditModal()" class="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl">Cancelar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- Parámetros / Configuración View -->
     <section id="sec-settings" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Parámetros de Tarifas</h2>
@@ -305,23 +384,26 @@
 
   </main>
 
-  <!-- Navigation Bar Mobile -->
+  <!-- Navigation Bar Mobile (6 Secciones) -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
-    <div class="max-w-md mx-auto h-full grid grid-cols-5 text-center">
+    <div class="max-w-md mx-auto h-full grid grid-cols-6 text-center">
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📊</span><span class="text-[9px]">Inicio</span>
+        <span class="text-sm">📊</span><span class="text-[8px]">Inicio</span>
       </button>
       <button onclick="app.showSec('sec-reception')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📦</span><span class="text-[9px]">Recepción</span>
+        <span class="text-sm">📦</span><span class="text-[8px]">Recepción</span>
       </button>
       <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📋</span><span class="text-[9px]">Inventario</span>
+        <span class="text-sm">📋</span><span class="text-[8px]">Inventario</span>
       </button>
       <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">🚚</span><span class="text-[9px]">Entrega</span>
+        <span class="text-sm">🚚</span><span class="text-[8px]">Entrega</span>
+      </button>
+      <button onclick="app.showSec('sec-manage')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-sm">✏️</span><span class="text-[8px]">Gestión</span>
       </button>
       <button onclick="app.showSec('sec-settings')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">⚙️</span><span class="text-[9px]">Ajustes</span>
+        <span class="text-sm">⚙️</span><span class="text-[8px]">Ajustes</span>
       </button>
     </div>
   </nav>

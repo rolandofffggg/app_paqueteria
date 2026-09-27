@@ -16,6 +16,8 @@ class App {
     await this.loadTariffSettings();
     this.initNetwork();
     this.loadDashboard();
+    
+    // Garantizar que los botones se rendericen al iniciar
     this.renderShelfButtons();
 
     if ('serviceWorker' in navigator) {
@@ -71,35 +73,51 @@ class App {
 
   showSec(secId) {
     ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery', 'sec-settings'].forEach(id => {
-      document.getElementById(id).classList.add('hidden');
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
     });
-    document.getElementById(secId).classList.remove('hidden');
+    
+    const targetSec = document.getElementById(secId);
+    if (targetSec) targetSec.classList.remove('hidden');
+
+    // Forzar el renderizado de estantes al navegar hacia Recepción
+    if (secId === 'sec-reception') {
+      this.renderShelfButtons();
+    }
   }
 
   // Genera y renderiza los 10 botones de Estantes (E1 a E10)
   renderShelfButtons() {
     const shelfContainer = document.getElementById('shelf-buttons');
     if (!shelfContainer) return;
+
     shelfContainer.innerHTML = '';
     for (let i = 1; i <= 10; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `shelf-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedShelf === `E${i}` ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
-      btn.textContent = `E${i}`;
-      btn.onclick = () => this.selectShelf(`E${i}`);
+      const shelfId = `E${i}`;
+      btn.className = `shelf-btn p-1.5 text-xs font-bold rounded-lg border transition ${
+        this.selectedShelf === shelfId 
+          ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
+          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+      }`;
+      btn.textContent = shelfId;
+      btn.onclick = () => this.selectShelf(shelfId);
       shelfContainer.appendChild(btn);
     }
   }
 
-  // Al hacer clic en un Estante, se activa la visualización de las Filas (F1 a F5)
+  // Evento al seleccionar un Estante
   selectShelf(shelf) {
     this.selectedShelf = shelf;
     this.selectedRow = null;
     this.renderShelfButtons();
     this.renderRowButtons();
     
-    // Muestra el contenedor de Filas al seleccionar un Estante
-    document.getElementById('rows-container').classList.remove('hidden');
+    const rowsContainer = document.getElementById('rows-container');
+    if (rowsContainer) {
+      rowsContainer.classList.remove('hidden');
+    }
     this.updateLocationInput();
   }
 
@@ -107,13 +125,19 @@ class App {
   renderRowButtons() {
     const rowContainer = document.getElementById('row-buttons');
     if (!rowContainer) return;
+
     rowContainer.innerHTML = '';
     for (let i = 1; i <= 5; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `row-btn p-1.5 text-xs font-bold rounded-lg border transition ${this.selectedRow === `F${i}` ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`;
-      btn.textContent = `F${i}`;
-      btn.onclick = () => this.selectRow(`F${i}`);
+      const rowId = `F${i}`;
+      btn.className = `row-btn p-1.5 text-xs font-bold rounded-lg border transition ${
+        this.selectedRow === rowId 
+          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
+          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+      }`;
+      btn.textContent = rowId;
+      btn.onclick = () => this.selectRow(rowId);
       rowContainer.appendChild(btn);
     }
   }
@@ -124,9 +148,11 @@ class App {
     this.updateLocationInput();
   }
 
-  // Actualiza dinámicamente el valor del input Ubicación Seleccionada
+  // Compone automáticamente la ubicación
   updateLocationInput() {
     const input = document.getElementById('rec-ubicacion');
+    if (!input) return;
+
     if (this.selectedShelf && this.selectedRow) {
       input.value = `${this.selectedShelf}-${this.selectedRow}`;
     } else if (this.selectedShelf) {
@@ -245,11 +271,14 @@ class App {
       document.getElementById('form-reception').reset();
     }
 
-    // Reset de la selección de ubicación
+    // Reseteo del selector de ubicación
     this.selectedShelf = null;
     this.selectedRow = null;
     this.renderShelfButtons();
-    document.getElementById('rows-container').classList.add('hidden');
+    const rowsContainer = document.getElementById('rows-container');
+    if (rowsContainer) {
+      rowsContainer.classList.add('hidden');
+    }
 
     this.loadDashboard();
     syncEngine.processQueue();

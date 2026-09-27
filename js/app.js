@@ -16,8 +16,6 @@ class App {
     await this.loadTariffSettings();
     this.initNetwork();
     this.loadDashboard();
-    
-    // Garantizar que los botones se rendericen al iniciar
     this.renderShelfButtons();
 
     if ('serviceWorker' in navigator) {
@@ -35,9 +33,10 @@ class App {
     }
   }
 
+  // --- MÓDULO DE AJUSTES Y TARIFAS ---
   async loadTariffSettings() {
     const saved = await db.get('settings', 'tariffs');
-    if (saved) {
+    if (saved && saved.value) {
       this.tariffs = saved.value;
     }
     document.getElementById('cfg-rate-base').value = this.tariffs.baseRate;
@@ -72,7 +71,7 @@ class App {
   }
 
   showSec(secId) {
-    ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery', 'sec-settings'].forEach(id => {
+    ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -80,13 +79,14 @@ class App {
     const targetSec = document.getElementById(secId);
     if (targetSec) targetSec.classList.remove('hidden');
 
-    // Forzar el renderizado de estantes al navegar hacia Recepción
     if (secId === 'sec-reception') {
       this.renderShelfButtons();
+    } else if (secId === 'sec-manage') {
+      this.loadManageList();
     }
   }
 
-  // Genera y renderiza los 10 botones de Estantes (E1 a E10)
+  // --- SELECTOR DE UBICACIÓN ---
   renderShelfButtons() {
     const shelfContainer = document.getElementById('shelf-buttons');
     if (!shelfContainer) return;
@@ -107,7 +107,6 @@ class App {
     }
   }
 
-  // Evento al seleccionar un Estante
   selectShelf(shelf) {
     this.selectedShelf = shelf;
     this.selectedRow = null;
@@ -121,7 +120,6 @@ class App {
     this.updateLocationInput();
   }
 
-  // Genera y renderiza los 5 botones de Filas (F1 a F5)
   renderRowButtons() {
     const rowContainer = document.getElementById('row-buttons');
     if (!rowContainer) return;
@@ -148,7 +146,6 @@ class App {
     this.updateLocationInput();
   }
 
-  // Compone automáticamente la ubicación
   updateLocationInput() {
     const input = document.getElementById('rec-ubicacion');
     if (!input) return;
@@ -162,46 +159,7 @@ class App {
     }
   }
 
-  setFixedLocationManual() {
-    const val = document.getElementById('inv-loc-input').value.trim();
-    if (!val) { alert('Ingrese una ubicación válida'); return; }
-    document.getElementById('inv-fixed-loc').textContent = val;
-    document.getElementById('btn-scan-pkg').disabled = false;
-    document.getElementById('btn-add-inv-pkg').disabled = false;
-    document.getElementById('inv-scanned-list').innerHTML = '';
-  }
-
-  async processInventoryManual() {
-    const code = document.getElementById('inv-pkg-input').value.trim();
-    const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
-    if (!code) { alert('Ingrese un código de paquete'); return; }
-    await this.updatePackageLocation(code, fixedLoc);
-    document.getElementById('inv-pkg-input').value = '';
-  }
-
-  async handleClientAutocomplete(value) {
-    const listEl = document.getElementById('client-suggestions');
-    if (!value || value.trim().length < 2) { listEl.classList.add('hidden'); return; }
-
-    const packages = await db.getAll('packages');
-    const clients = [...new Set(packages.map(p => p.client).filter(Boolean))];
-    const matches = clients.filter(c => c.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
-
-    if (matches.length === 0) { listEl.classList.add('hidden'); return; }
-
-    listEl.innerHTML = matches.map(c => `
-      <div onclick="app.selectClientSuggestion('${c.replace(/'/g, "\\'")}')" class="p-2 hover:bg-slate-50 cursor-pointer text-slate-700 font-medium">
-        👤 ${c}
-      </div>
-    `).join('');
-    listEl.classList.remove('hidden');
-  }
-
-  selectClientSuggestion(clientName) {
-    document.getElementById('rec-cliente').value = clientName;
-    document.getElementById('client-suggestions').classList.add('hidden');
-  }
-
+  // --- RECEPCIÓN Y ENVÍO DE WHATSAPP ---
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim();
@@ -210,6 +168,7 @@ class App {
     const phoneRecipient = document.getElementById('rec-celular-dest').value.trim();
     const locationVal = document.getElementById('rec-ubicacion').value;
     const keepClient = document.getElementById('chk-keep-client').checked;
+    const sendWA = document.getElementById('chk-send-wa').checked;
 
     if (!locationVal || locationVal.includes('?')) {
       alert('Por favor complete la selección de Estante y Fila.');
@@ -253,11 +212,21 @@ class App {
     document.getElementById('res-client').textContent = `${pkg.client} (${new Date(creationTimestamp).toLocaleString()})`;
     document.getElementById('qr-result').classList.remove('hidden');
 
-    const targetPhone = phoneRecipient || phoneClient;
-    if (targetPhone) {
-      const cleanPhone = targetPhone.replace(/\D/g, '');
-      const message = encodeURIComponent(`Hola ${clientName}, confirmamos la recepción de tu paquete #${pkg.code} en Paquetería.\n\n📍 Ubicación: ${pkg.location}\n📦 Contenido: ${pkg.category}\n🎨 Color: ${pkg.color}`);
-      window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+    // Confirmación por WhatsApp (Cliente y Remitente/Destinatario)
+    if (sendWA) {
+      const msgText = encodeURIComponent(`Hola, confirmamos la recepción del paquete #${pkg.code} en Paquetería.\n\n👤 Cliente: ${clientName}\n📍 Ubicación: ${pkg.location}\n📦 Contenido: ${pkg.category}\n🎨 Color: ${pkg.color}`);
+      
+      if (phoneClient) {
+        const cleanClientPhone = phoneClient.replace(/\D/g, '');
+        window.open(`https://wa.me/${cleanClientPhone}?text=${msgText}`, '_blank');
+      }
+      
+      if (phoneRecipient) {
+        const cleanRecPhone = phoneRecipient.replace(/\D/g, '');
+        setTimeout(() => {
+          window.open(`https://wa.me/${cleanRecPhone}?text=${msgText}`, '_blank');
+        }, 500);
+      }
     }
 
     if (keepClient) {
@@ -271,23 +240,125 @@ class App {
       document.getElementById('form-reception').reset();
     }
 
-    // Reseteo del selector de ubicación
     this.selectedShelf = null;
     this.selectedRow = null;
     this.renderShelfButtons();
     const rowsContainer = document.getElementById('rows-container');
-    if (rowsContainer) {
-      rowsContainer.classList.add('hidden');
-    }
+    if (rowsContainer) rowsContainer.classList.add('hidden');
 
     this.loadDashboard();
     syncEngine.processQueue();
   }
 
-  printCurrentPackage() {
-    if (this.lastCreatedPackage) {
-      printer.printLabel(this.lastCreatedPackage);
+  // --- MÓDULO DE GESTIÓN (EDITAR / ELIMINAR) ---
+  async loadManageList() {
+    const listEl = document.getElementById('manage-list');
+    if (!listEl) return;
+
+    const query = (document.getElementById('manage-search')?.value || '').toLowerCase();
+    const packages = await db.getAll('packages');
+
+    const filtered = packages.filter(p => 
+      (p.client || '').toLowerCase().includes(query) ||
+      (p.code || '').toLowerCase().includes(query) ||
+      (p.location || '').toLowerCase().includes(query)
+    );
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontraron registros.</p>';
+      return;
     }
+
+    listEl.innerHTML = filtered.map(p => `
+      <div class="bg-white p-2.5 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
+        <div>
+          <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
+          <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Tel: ${p.phone || 'N/A'}</div>
+        </div>
+        <div class="flex gap-1">
+          <button onclick="app.openEditModal('${p.packageId}')" class="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-200">✏️ Editar</button>
+          <button onclick="app.deletePackage('${p.packageId}')" class="px-2 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold border border-red-200">🗑️ Borrar</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async openEditModal(packageId) {
+    const pkg = await db.get('packages', packageId);
+    if (!pkg) return;
+
+    document.getElementById('edit-pkg-id').value = pkg.packageId;
+    document.getElementById('edit-pkg-code-title').textContent = pkg.code;
+    document.getElementById('edit-client').value = pkg.client || '';
+    document.getElementById('edit-phone').value = pkg.phone || '';
+    document.getElementById('edit-recipient-phone').value = pkg.recipientPhone || '';
+    document.getElementById('edit-location').value = pkg.location || '';
+    document.getElementById('edit-status').value = pkg.status || 'PENDIENTE';
+    document.getElementById('edit-category').value = pkg.category || '';
+    document.getElementById('edit-size').value = pkg.size || '';
+    document.getElementById('edit-color').value = pkg.color || '';
+
+    document.getElementById('modal-edit-pkg').classList.remove('hidden');
+  }
+
+  closeEditModal() {
+    document.getElementById('modal-edit-pkg').classList.add('hidden');
+  }
+
+  async saveEditedPackage(e) {
+    e.preventDefault();
+    const pkgId = document.getElementById('edit-pkg-id').value;
+    const pkg = await db.get('packages', pkgId);
+    if (!pkg) return;
+
+    pkg.client = document.getElementById('edit-client').value.trim();
+    pkg.phone = document.getElementById('edit-phone').value.trim();
+    pkg.recipientPhone = document.getElementById('edit-recipient-phone').value.trim();
+    pkg.location = document.getElementById('edit-location').value.trim();
+    pkg.status = document.getElementById('edit-status').value;
+    pkg.category = document.getElementById('edit-category').value.trim();
+    pkg.size = document.getElementById('edit-size').value.trim();
+    pkg.color = document.getElementById('edit-color').value.trim();
+
+    await db.put('packages', pkg);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
+
+    this.closeEditModal();
+    this.loadManageList();
+    this.loadDashboard();
+    syncEngine.processQueue();
+  }
+
+  async deletePackage(packageId) {
+    if (!confirm('¿Está seguro de eliminar este registro permanente de la base de datos?')) return;
+
+    const pkg = await db.get('packages', packageId);
+    if (!pkg) return;
+
+    await db.delete('packages', packageId);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'DELETE', payload: { packageId } });
+
+    this.loadManageList();
+    this.loadDashboard();
+    syncEngine.processQueue();
+  }
+
+  // --- INVENTARIO ---
+  setFixedLocationManual() {
+    const val = document.getElementById('inv-loc-input').value.trim();
+    if (!val) { alert('Ingrese una ubicación válida'); return; }
+    document.getElementById('inv-fixed-loc').textContent = val;
+    document.getElementById('btn-scan-pkg').disabled = false;
+    document.getElementById('btn-add-inv-pkg').disabled = false;
+    document.getElementById('inv-scanned-list').innerHTML = '';
+  }
+
+  async processInventoryManual() {
+    const code = document.getElementById('inv-pkg-input').value.trim();
+    const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
+    if (!code) { alert('Ingrese un código de paquete'); return; }
+    await this.updatePackageLocation(code, fixedLoc);
+    document.getElementById('inv-pkg-input').value = '';
   }
 
   async updatePackageLocation(qrCode, newLocation) {
@@ -313,6 +384,30 @@ class App {
     syncEngine.processQueue();
   }
 
+  async handleClientAutocomplete(value) {
+    const listEl = document.getElementById('client-suggestions');
+    if (!value || value.trim().length < 2) { listEl.classList.add('hidden'); return; }
+
+    const packages = await db.getAll('packages');
+    const clients = [...new Set(packages.map(p => p.client).filter(Boolean))];
+    const matches = clients.filter(c => c.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
+
+    if (matches.length === 0) { listEl.classList.add('hidden'); return; }
+
+    listEl.innerHTML = matches.map(c => `
+      <div onclick="app.selectClientSuggestion('${c.replace(/'/g, "\\'")}')" class="p-2 hover:bg-slate-50 cursor-pointer text-slate-700 font-medium">
+        👤 ${c}
+      </div>
+    `).join('');
+    listEl.classList.remove('hidden');
+  }
+
+  selectClientSuggestion(clientName) {
+    document.getElementById('rec-cliente').value = clientName;
+    document.getElementById('client-suggestions').classList.add('hidden');
+  }
+
+  // --- ENTREGA ---
   async searchDeliveryManual() {
     const code = document.getElementById('del-search-code').value.trim();
     if (!code) { alert('Ingrese un código de paquete'); return; }
@@ -432,6 +527,12 @@ class App {
         </div>
       </div>
     `).join('');
+  }
+
+  printCurrentPackage() {
+    if (this.lastCreatedPackage) {
+      printer.printLabel(this.lastCreatedPackage);
+    }
   }
 
   async downloadReport() {

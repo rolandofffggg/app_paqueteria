@@ -13,10 +13,10 @@
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
 
-  <!-- Header compacto -->
+  <!-- Header compacto con Nombre de Empresa Dinámico -->
   <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
     <div class="max-w-md mx-auto px-4 py-2 flex items-center justify-between">
-      <h1 class="text-base font-bold tracking-wide text-blue-400">📦 Paquetería</h1>
+      <h1 class="text-base font-bold tracking-wide text-blue-400" id="header-app-title">📦 Paquetería</h1>
       <div class="flex items-center space-x-2 text-[10px]">
         <span id="net-status" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
         <span id="sync-status" class="hidden px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Sync...</span>
@@ -38,7 +38,7 @@
   <!-- Main Content -->
   <main id="main-content" class="flex-1 max-w-md w-full mx-auto p-3 overflow-y-auto pb-16">
     
-    <!-- Dashboard View -->
+    <!-- Dashboard / Inventario View (Anteriormente Inicio) -->
     <section id="sec-dashboard" class="space-y-3">
       <h2 class="text-base font-bold text-slate-700">Resumen de Hoy</h2>
       <div class="grid grid-cols-2 gap-2">
@@ -58,6 +58,12 @@
           <span class="block text-xl font-black text-purple-600" id="kpi-ingresos">Bs. 0.00</span>
           <span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Cobrado Hoy</span>
         </div>
+      </div>
+
+      <!-- KPI Acumulado -->
+      <div class="bg-slate-800 text-white p-2.5 rounded-xl text-center shadow-sm flex justify-between items-center px-4">
+        <span class="text-xs font-bold text-slate-300 uppercase">Total Registros Acumulados:</span>
+        <span class="text-lg font-black text-blue-400" id="kpi-acumulados">0</span>
       </div>
 
       <div class="space-y-2 pt-1">
@@ -89,10 +95,6 @@
         <h2 class="text-base font-bold text-slate-700">Registrar Nuevo Paquete</h2>
         <div class="flex items-center gap-3">
           <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
-            <input type="checkbox" id="chk-send-wa" checked class="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
-            <span class="text-[10px] font-medium text-emerald-700">📲 Notificar WhatsApp</span>
-          </label>
-          <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
             <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
             <span class="text-[10px] font-medium">Fijar Cliente</span>
           </label>
@@ -117,47 +119,32 @@
           </div>
         </div>
 
-        <!-- Código -->
+        <!-- Código con restricción de formato y unicidad -->
         <div>
           <div class="flex gap-2">
-            <input type="text" id="rec-codigo" required placeholder="Código del Paquete *" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono">
+            <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código del Paquete (Ej: P0001) *" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono uppercase">
             <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">
               📷 QR
             </button>
           </div>
+          <span class="text-[9px] text-slate-400 mt-0.5 block">Exactamente 5 caracteres (Inicia con letra, termina con número).</span>
         </div>
 
-        <!-- Atributos -->
+        <!-- Atributos Dinámicos -->
         <div class="grid grid-cols-3 gap-2">
           <div>
             <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
               <option value="" disabled selected>Contenido</option>
-              <option value="ROPA">ROPA</option>
-              <option value="JOYAS">JOYAS</option>
-              <option value="REPUESTOS">REPUESTOS</option>
-              <option value="DOCUMENTOS">DOCUMENTOS</option>
-              <option value="ELECTRÓNICA">ELECTRÓNICA</option>
-              <option value="OTROS">OTROS</option>
             </select>
           </div>
           <div>
             <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
               <option value="" disabled selected>Tamaño</option>
-              <option value="PEQUEÑO">PEQUEÑO</option>
-              <option value="MEDIANO">MEDIANO</option>
-              <option value="GRANDE">GRANDE</option>
             </select>
           </div>
           <div>
             <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
               <option value="" disabled selected>Color</option>
-              <option value="AMARILLO">AMARILLO</option>
-              <option value="ROJO">ROJO</option>
-              <option value="AZUL">AZUL</option>
-              <option value="NEGRO">NEGRO</option>
-              <option value="BLANCO">BLANCO</option>
-              <option value="VERDE">VERDE</option>
-              <option value="OTRO">OTRO</option>
             </select>
           </div>
         </div>
@@ -183,21 +170,23 @@
           💾 Guardar Registro de Paquete
         </button>
       </form>
+    </section>
 
-      <!-- Ticket QR Card -->
-      <div id="qr-result" class="hidden bg-white p-3.5 rounded-xl border border-slate-200 text-center space-y-2.5 shadow-md">
-        <h3 class="text-xs font-bold text-slate-600">¡Paquete Registrado!</h3>
-        <div class="text-xl font-black text-slate-800 font-mono" id="res-code">00001</div>
-        <div id="qrcode-target" class="flex justify-center py-1"></div>
-        <p class="text-[11px] text-slate-500" id="res-client"></p>
-        <div class="flex gap-2">
-          <button onclick="app.printCurrentPackage()" class="flex-1 bg-emerald-600 text-white font-semibold py-2 rounded-lg text-xs">🖨️ Imprimir Etiqueta</button>
-          <button onclick="document.getElementById('qr-result').classList.add('hidden')" class="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-lg text-xs">Cerrar Ticket</button>
-        </div>
+    <!-- Novedad Fase 8: Módulo Dedicado de Impresión y Notificaciones -->
+    <section id="sec-print-notify" class="space-y-3 hidden">
+      <h2 class="text-base font-bold text-slate-700">Impresión y Notificaciones</h2>
+      
+      <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <input type="text" id="print-search-input" oninput="app.searchPrintPackage(this.value)" placeholder="Buscar por código de paquete o cliente..." class="w-full px-3 py-2 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Tarjeta Previsualización de Ticket -->
+      <div id="print-card-target" class="bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">
+        <p class="text-xs text-slate-400 py-4">Cargando último paquete registrado...</p>
       </div>
     </section>
 
-    <!-- Inventario View -->
+    <!-- Ubicaciones View (Anteriormente Inventario) -->
     <section id="sec-inventory" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Inventario por Ubicación</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
@@ -283,7 +272,7 @@
       </div>
     </section>
 
-    <!-- Novedad Fase 7: Gestión de Registros View -->
+    <!-- Gestión de Registros View -->
     <section id="sec-manage" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Gestión de Registros</h2>
       
@@ -360,10 +349,25 @@
       </div>
     </div>
 
-    <!-- Parámetros / Configuración View -->
+    <!-- Parámetros / Ajustes View (Ampliado en Fase 8) -->
     <section id="sec-settings" class="space-y-3 hidden">
-      <h2 class="text-base font-bold text-slate-700">Parámetros de Tarifas</h2>
-      <form onsubmit="app.saveTariffSettings(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+      <h2 class="text-base font-bold text-slate-700">Ajustes Generales</h2>
+      
+      <!-- Marca de la Empresa -->
+      <form onsubmit="app.saveBrandSettings(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Configuración de Marca</h3>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nombre de la Paquetería</label>
+          <input type="text" id="cfg-company-name" placeholder="Ej. Express Bolivia" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
+        </div>
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 text-xs">
+          💾 Guardar Nombre Empresa
+        </button>
+      </form>
+
+      <!-- Tarifas -->
+      <form onsubmit="app.saveTariffSettings(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Parámetros de Tarifas</h3>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Tarifa Base por Día (Bs.)</label>
           <input type="number" step="0.5" id="cfg-rate-base" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
@@ -376,34 +380,72 @@
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Penalización Diaria por Retraso (Bs.)</label>
           <input type="number" step="0.5" id="cfg-rate-penalty" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
         </div>
-        <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2.5 rounded-xl hover:bg-slate-900 transition text-xs">
-          💾 Guardar Parámetros Tarifarios
+        <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl hover:bg-slate-900 text-xs">
+          💾 Guardar Tarifas
         </button>
       </form>
+
+      <!-- Catalogación Dinámica -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Catalogación Dinámica</h3>
+        
+        <!-- Categorías / Contenido -->
+        <div class="space-y-1">
+          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Contenido</label>
+          <div class="flex gap-2">
+            <input type="text" id="add-opt-category" placeholder="Nuevo Contenido" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <button onclick="app.addCatalogOption('categories', 'add-opt-category')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
+          </div>
+          <div id="list-opts-categories" class="flex flex-wrap gap-1 pt-1"></div>
+        </div>
+
+        <!-- Tamaños -->
+        <div class="space-y-1 border-t pt-2">
+          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Tamaño</label>
+          <div class="flex gap-2">
+            <input type="text" id="add-opt-size" placeholder="Nuevo Tamaño" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <button onclick="app.addCatalogOption('sizes', 'add-opt-size')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
+          </div>
+          <div id="list-opts-sizes" class="flex flex-wrap gap-1 pt-1"></div>
+        </div>
+
+        <!-- Colores -->
+        <div class="space-y-1 border-t pt-2">
+          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Color</label>
+          <div class="flex gap-2">
+            <input type="text" id="add-opt-color" placeholder="Nuevo Color" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <button onclick="app.addCatalogOption('colors', 'add-opt-color')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
+          </div>
+          <div id="list-opts-colors" class="flex flex-wrap gap-1 pt-1"></div>
+        </div>
+      </div>
     </section>
 
   </main>
 
-  <!-- Navigation Bar Mobile (6 Secciones) -->
+  <!-- Navigation Bar Mobile Actualizada (7 Botones) -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
-    <div class="max-w-md mx-auto h-full grid grid-cols-6 text-center">
+    <div class="max-w-md mx-auto h-full grid grid-cols-7 text-center">
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📊</span><span class="text-[8px]">Inicio</span>
+        <span class="text-sm">📊</span><span class="text-[7px] leading-tight">Inventario</span>
       </button>
       <button onclick="app.showSec('sec-reception')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📦</span><span class="text-[8px]">Recepción</span>
+        <span class="text-sm">📦</span><span class="text-[7px] leading-tight">Recepción</span>
+      </button>
+      <button onclick="app.showSec('sec-print-notify')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <span class="text-sm">🖨️</span><span class="text-[7px] leading-tight">Impresión</span>
       </button>
       <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📋</span><span class="text-[8px]">Inventario</span>
+        <span class="text-sm">📋</span><span class="text-[7px] leading-tight">Ubicaciones</span>
       </button>
       <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">🚚</span><span class="text-[8px]">Entrega</span>
+        <span class="text-sm">🚚</span><span class="text-[7px] leading-tight">Entrega</span>
       </button>
       <button onclick="app.showSec('sec-manage')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">✏️</span><span class="text-[8px]">Gestión</span>
+        <span class="text-sm">✏️</span><span class="text-[7px] leading-tight">Gestión</span>
       </button>
       <button onclick="app.showSec('sec-settings')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">⚙️</span><span class="text-[8px]">Ajustes</span>
+        <span class="text-sm">⚙️</span><span class="text-[7px] leading-tight">Ajustes</span>
       </button>
     </div>
   </nav>

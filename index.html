@@ -115,14 +115,14 @@
             <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
           </div>
           <div>
-            <input type="tel" id="rec-celular-dest" placeholder="Celular Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="tel" id="rec-celular-dest" placeholder="Celular Remitente/Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
           </div>
         </div>
 
         <!-- Código con restricción de formato y unicidad -->
         <div>
           <div class="flex gap-2">
-            <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código Paquete (Ej: P0001)" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono uppercase">
+            <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código del Paquete (Ej: P0001) *" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono uppercase">
             <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">
               📷 QR
             </button>
@@ -151,7 +151,7 @@
 
         <!-- Selector de Ubicación -->
         <div>
-          <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
+          <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación Seleccionada (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
 
           <!-- Estantes -->
           <div class="mb-2">

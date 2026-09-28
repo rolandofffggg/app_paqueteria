@@ -29,7 +29,7 @@
     <div class="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl space-y-3 text-center">
       <div class="text-3xl">🔐</div>
       <h2 class="text-lg font-bold text-slate-800">Acceso Operador</h2>
-      <input type="password" id="pin-input" placeholder="Clave de acceso" class="w-full text-center px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base">
+      <input type="password" id="pin-input" placeholder="Clave de acceso" class="w-full text-center px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-bold">
       <button onclick="app.login()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-xl hover:bg-blue-700 transition text-sm">Ingresar</button>
       <p id="login-error" class="text-xs text-red-500 hidden">Clave incorrecta</p>
     </div>
@@ -38,7 +38,7 @@
   <!-- Main Content -->
   <main id="main-content" class="flex-1 max-w-md w-full mx-auto p-3 overflow-y-auto pb-16">
     
-    <!-- Dashboard / Inventario View (Anteriormente Inicio) -->
+    <!-- Módulo Inventario / Dashboard -->
     <section id="sec-dashboard" class="space-y-3">
       <h2 class="text-base font-bold text-slate-700">Resumen de Hoy</h2>
       <div class="grid grid-cols-2 gap-2">
@@ -75,8 +75,8 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <input type="text" id="search-input" oninput="app.loadDashboard()" placeholder="Buscar cliente, código..." class="flex-1 px-3 py-1.5 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
-          <select id="filter-status" onchange="app.loadDashboard()" class="px-2 py-1.5 border rounded-xl text-xs bg-white focus:ring-2 focus:ring-blue-500">
+          <input type="text" id="search-input" oninput="app.loadDashboard()" placeholder="Buscar cliente, código..." class="flex-1 px-3 py-1.5 border rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="filter-status" onchange="app.loadDashboard()" class="px-2 py-1.5 border rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-blue-500">
             <option value="ALL">Todos</option>
             <option value="PENDIENTE" selected>Pendientes</option>
             <option value="ENTREGADO">Entregados</option>
@@ -105,24 +105,24 @@
         
         <!-- Cliente -->
         <div class="relative">
-          <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+          <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
         </div>
 
         <!-- Celulares -->
         <div class="grid grid-cols-2 gap-2">
           <div>
-            <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           </div>
           <div>
-            <input type="tel" id="rec-celular-dest" placeholder="Celular Remitente/Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="tel" id="rec-celular-dest" placeholder="Celular Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           </div>
         </div>
 
-        <!-- Código con restricción de formato y unicidad -->
+        <!-- Código con restricción de formato -->
         <div>
           <div class="flex gap-2">
-            <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código del Paquete (Ej: P0001) *" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono uppercase">
+            <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código Paquete (Ej: P0001)" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono font-bold uppercase">
             <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">
               📷 QR
             </button>
@@ -133,17 +133,17 @@
         <!-- Atributos Dinámicos -->
         <div class="grid grid-cols-3 gap-2">
           <div>
-            <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
               <option value="" disabled selected>Contenido</option>
             </select>
           </div>
           <div>
-            <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
               <option value="" disabled selected>Tamaño</option>
             </select>
           </div>
           <div>
-            <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
               <option value="" disabled selected>Color</option>
             </select>
           </div>
@@ -151,7 +151,7 @@
 
         <!-- Selector de Ubicación -->
         <div>
-          <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación Seleccionada (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
+          <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
 
           <!-- Estantes -->
           <div class="mb-2">
@@ -172,27 +172,27 @@
       </form>
     </section>
 
-    <!-- Novedad Fase 8: Módulo Dedicado de Impresión y Notificaciones -->
+    <!-- Módulo de Notificaciones (Antes Impresión) -->
     <section id="sec-print-notify" class="space-y-3 hidden">
-      <h2 class="text-base font-bold text-slate-700">Impresión y Notificaciones</h2>
+      <h2 class="text-base font-bold text-slate-700">Notificaciones de Paquetes</h2>
       
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
-        <input type="text" id="print-search-input" oninput="app.searchPrintPackage(this.value)" placeholder="Buscar por código de paquete o cliente..." class="w-full px-3 py-2 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="text" id="print-search-input" oninput="app.searchPrintPackage(this.value)" placeholder="Buscar por código de paquete o cliente..." class="w-full px-3 py-2 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
       </div>
 
-      <!-- Tarjeta Previsualización de Ticket -->
+      <!-- Tarjeta Previsualización y Ficha Informativa -->
       <div id="print-card-target" class="bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">
         <p class="text-xs text-slate-400 py-4">Cargando último paquete registrado...</p>
       </div>
     </section>
 
-    <!-- Ubicaciones View (Anteriormente Inventario) -->
+    <!-- Ubicaciones View -->
     <section id="sec-inventory" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Inventario por Ubicación</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         
         <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-loc-input" placeholder="Código Ubicación *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono">
+          <input type="text" id="inv-loc-input" placeholder="Código Ubicación *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-bold">
           <button onclick="app.setFixedLocationManual()" class="col-span-3 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Fijar</button>
           <button onclick="scanner.scanLocation()" class="col-span-3 bg-slate-800 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
         </div>
@@ -203,7 +203,7 @@
         </div>
 
         <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-pkg-input" placeholder="Código Paquete *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono">
+          <input type="text" id="inv-pkg-input" placeholder="Código Paquete *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-bold">
           <button onclick="app.processInventoryManual()" id="btn-add-inv-pkg" disabled class="col-span-3 bg-emerald-600 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Verificar</button>
           <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="col-span-3 bg-slate-800 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
         </div>
@@ -224,7 +224,7 @@
         
         <div>
           <div class="flex gap-2">
-            <input type="text" id="del-search-code" placeholder="Código de Paquete *" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-mono">
+            <input type="text" id="del-search-code" placeholder="Código de Paquete *" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-mono font-bold">
             <button onclick="app.searchDeliveryManual()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">Buscar</button>
             <button onclick="scanner.scanForDelivery()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
           </div>
@@ -232,10 +232,10 @@
 
         <div id="del-details" class="hidden space-y-2.5 border-t pt-2.5">
           <div class="bg-blue-50 p-2.5 rounded-lg text-xs space-y-1">
-            <p><strong>Código:</strong> <span id="del-pkg-code" class="font-mono"></span></p>
-            <p><strong>Cliente:</strong> <span id="del-pkg-client"></span></p>
-            <p><strong>Ubicación:</strong> <span id="del-pkg-loc"></span></p>
-            <p><strong>Recepción:</strong> <span id="del-pkg-date" class="text-blue-700 font-medium"></span></p>
+            <p><strong>Código:</strong> <span id="del-pkg-code" class="font-mono font-bold"></span></p>
+            <p><strong>Cliente:</strong> <span id="del-pkg-client" class="font-bold"></span></p>
+            <p><strong>Ubicación:</strong> <span id="del-pkg-loc" class="font-bold"></span></p>
+            <p><strong>Recepción:</strong> <span id="del-pkg-date" class="text-blue-700 font-bold"></span></p>
           </div>
 
           <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs space-y-1">
@@ -259,10 +259,10 @@
           </div>
 
           <div>
-            <input type="text" id="del-retira-nombre" placeholder="Nombre de quien retira (Opcional)" class="w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="text" id="del-retira-nombre" placeholder="Nombre de quien retira (Opcional)" class="w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           </div>
           <div>
-            <input type="text" id="del-retira-id" placeholder="Identificación / CI (Opcional)" class="w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs">
+            <input type="text" id="del-retira-id" placeholder="Identificación / CI (Opcional)" class="w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           </div>
 
           <button onclick="app.confirmDelivery()" class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl hover:bg-emerald-700 transition text-xs">
@@ -277,7 +277,7 @@
       <h2 class="text-base font-bold text-slate-700">Gestión de Registros</h2>
       
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        <input type="text" id="manage-search" oninput="app.loadManageList()" placeholder="Buscar paquete por código, cliente o ubicación..." class="w-full px-3 py-1.5 border rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="text" id="manage-search" oninput="app.loadManageList()" placeholder="Buscar paquete por código, cliente o ubicación..." class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
       </div>
 
       <div id="manage-list" class="space-y-2">
@@ -289,7 +289,7 @@
     <div id="modal-edit-pkg" class="fixed inset-0 bg-slate-900/80 z-50 hidden flex items-center justify-center p-4">
       <div class="bg-white rounded-2xl p-4 w-full max-w-sm shadow-xl space-y-3">
         <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-xs font-bold text-slate-800">Editar Paquete #<span id="edit-pkg-code-title"></span></h3>
+          <h3 class="text-xs font-bold text-slate-800">Editar Paquete <span id="edit-pkg-code-title"></span></h3>
           <button onclick="app.closeEditModal()" class="text-slate-400 hover:text-slate-600 font-bold">&times;</button>
         </div>
 
@@ -298,28 +298,28 @@
 
           <div>
             <label class="block font-semibold text-slate-600 mb-0.5">Cliente</label>
-            <input type="text" id="edit-client" required class="w-full px-2.5 py-1.5 border rounded-lg">
+            <input type="text" id="edit-client" required class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Celular Cliente</label>
-              <input type="tel" id="edit-phone" class="w-full px-2 py-1.5 border rounded-lg">
+              <input type="tel" id="edit-phone" class="w-full px-2 py-1.5 border rounded-lg font-bold">
             </div>
             <div>
-              <label class="block font-semibold text-slate-600 mb-0.5">Celular Remitente</label>
-              <input type="tel" id="edit-recipient-phone" class="w-full px-2 py-1.5 border rounded-lg">
+              <label class="block font-semibold text-slate-600 mb-0.5">Celular Destinatario</label>
+              <input type="tel" id="edit-recipient-phone" class="w-full px-2 py-1.5 border rounded-lg font-bold">
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Ubicación</label>
-              <input type="text" id="edit-location" required class="w-full px-2 py-1.5 border rounded-lg font-mono">
+              <input type="text" id="edit-location" required class="w-full px-2 py-1.5 border rounded-lg font-mono font-bold">
             </div>
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Estado</label>
-              <select id="edit-status" class="w-full px-2 py-1.5 border rounded-lg bg-white">
+              <select id="edit-status" class="w-full px-2 py-1.5 border rounded-lg bg-white font-bold">
                 <option value="PENDIENTE">PENDIENTE</option>
                 <option value="ENTREGADO">ENTREGADO</option>
               </select>
@@ -329,15 +329,15 @@
           <div class="grid grid-cols-3 gap-1.5">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Categoría</label>
-              <input type="text" id="edit-category" class="w-full px-1.5 py-1.5 border rounded-lg">
+              <input type="text" id="edit-category" class="w-full px-1.5 py-1.5 border rounded-lg font-bold">
             </div>
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Tamaño</label>
-              <input type="text" id="edit-size" class="w-full px-1.5 py-1.5 border rounded-lg">
+              <input type="text" id="edit-size" class="w-full px-1.5 py-1.5 border rounded-lg font-bold">
             </div>
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Color</label>
-              <input type="text" id="edit-color" class="w-full px-1.5 py-1.5 border rounded-lg">
+              <input type="text" id="edit-color" class="w-full px-1.5 py-1.5 border rounded-lg font-bold">
             </div>
           </div>
 
@@ -349,7 +349,7 @@
       </div>
     </div>
 
-    <!-- Parámetros / Ajustes View (Ampliado en Fase 8) -->
+    <!-- Parámetros / Ajustes View (Con Resguardo de Datos Backup/Restore) -->
     <section id="sec-settings" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Ajustes Generales</h2>
       
@@ -358,7 +358,7 @@
         <h3 class="text-xs font-bold text-blue-600 uppercase">Configuración de Marca</h3>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nombre de la Paquetería</label>
-          <input type="text" id="cfg-company-name" placeholder="Ej. Express Bolivia" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
+          <input type="text" id="cfg-company-name" placeholder="Ej. Express Bolivia" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 text-xs">
           💾 Guardar Nombre Empresa
@@ -370,30 +370,46 @@
         <h3 class="text-xs font-bold text-blue-600 uppercase">Parámetros de Tarifas</h3>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Tarifa Base por Día (Bs.)</label>
-          <input type="number" step="0.5" id="cfg-rate-base" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
+          <input type="number" step="0.5" id="cfg-rate-base" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Días de Gracia (Sin penalización)</label>
-          <input type="number" id="cfg-grace-days" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
+          <input type="number" id="cfg-grace-days" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Penalización Diaria por Retraso (Bs.)</label>
-          <input type="number" step="0.5" id="cfg-rate-penalty" required class="w-full px-3 py-1.5 border rounded-lg text-xs">
+          <input type="number" step="0.5" id="cfg-rate-penalty" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl hover:bg-slate-900 text-xs">
           💾 Guardar Tarifas
         </button>
       </form>
 
+      <!-- Resguardo y Restauración de Datos (Backup/Restore) -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Resguardo de Datos (Backup / Restore)</h3>
+        <p class="text-[10px] text-slate-500">Exporte una copia JSON de todos los registros o restaure una copia previa.</p>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="app.exportBackup()" class="bg-emerald-600 text-white font-bold py-2 rounded-xl hover:bg-emerald-700 text-xs flex items-center justify-center gap-1">
+            📥 Exportar Backup
+          </button>
+          <label class="bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 text-xs flex items-center justify-center gap-1 cursor-pointer text-center">
+            📤 Restaurar Backup
+            <input type="file" id="import-backup-file" accept=".json" onchange="app.importBackup(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+
       <!-- Catalogación Dinámica -->
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
         <h3 class="text-xs font-bold text-blue-600 uppercase">Catalogación Dinámica</h3>
         
-        <!-- Categorías / Contenido -->
+        <!-- Categorías -->
         <div class="space-y-1">
           <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Contenido</label>
           <div class="flex gap-2">
-            <input type="text" id="add-opt-category" placeholder="Nuevo Contenido" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <input type="text" id="add-opt-category" placeholder="Nuevo Contenido" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
             <button onclick="app.addCatalogOption('categories', 'add-opt-category')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
           </div>
           <div id="list-opts-categories" class="flex flex-wrap gap-1 pt-1"></div>
@@ -403,7 +419,7 @@
         <div class="space-y-1 border-t pt-2">
           <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Tamaño</label>
           <div class="flex gap-2">
-            <input type="text" id="add-opt-size" placeholder="Nuevo Tamaño" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <input type="text" id="add-opt-size" placeholder="Nuevo Tamaño" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
             <button onclick="app.addCatalogOption('sizes', 'add-opt-size')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
           </div>
           <div id="list-opts-sizes" class="flex flex-wrap gap-1 pt-1"></div>
@@ -413,7 +429,7 @@
         <div class="space-y-1 border-t pt-2">
           <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Color</label>
           <div class="flex gap-2">
-            <input type="text" id="add-opt-color" placeholder="Nuevo Color" class="flex-1 px-2.5 py-1 border rounded-lg text-xs">
+            <input type="text" id="add-opt-color" placeholder="Nuevo Color" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
             <button onclick="app.addCatalogOption('colors', 'add-opt-color')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
           </div>
           <div id="list-opts-colors" class="flex flex-wrap gap-1 pt-1"></div>
@@ -423,7 +439,7 @@
 
   </main>
 
-  <!-- Navigation Bar Mobile Actualizada (7 Botones) -->
+  <!-- Navigation Bar Mobile -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
     <div class="max-w-md mx-auto h-full grid grid-cols-7 text-center">
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
@@ -433,7 +449,7 @@
         <span class="text-sm">📦</span><span class="text-[7px] leading-tight">Recepción</span>
       </button>
       <button onclick="app.showSec('sec-print-notify')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">🖨️</span><span class="text-[7px] leading-tight">Impresión</span>
+        <span class="text-sm">🔔</span><span class="text-[7px] leading-tight">Notificaciones</span>
       </button>
       <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
         <span class="text-sm">📋</span><span class="text-[7px] leading-tight">Ubicaciones</span>
@@ -450,21 +466,28 @@
     </div>
   </nav>
 
-  <!-- Modal Cámara Scanner -->
+  <!-- Modal Cámara Scanner con Overlay de Enfoque Centrado -->
   <div id="modal-scanner" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col justify-between p-4">
-    <div class="flex justify-between items-center text-white">
+    <div class="flex justify-between items-center text-white z-10">
       <h3 class="text-xs font-semibold" id="scan-title">Escanear Código QR</h3>
       <button onclick="scanner.close()" class="text-xl font-bold">&times;</button>
     </div>
-    <div id="reader" class="w-full bg-slate-900 rounded-xl overflow-hidden my-auto"></div>
-    <button onclick="scanner.close()" class="w-full bg-white/20 text-white py-2.5 rounded-xl text-xs font-semibold">Cancelar</button>
+    
+    <div class="relative w-full max-w-xs mx-auto my-auto overflow-hidden rounded-2xl border-2 border-blue-500/50">
+      <div id="reader" class="w-full bg-slate-900"></div>
+      <!-- Overlay / Guía Visual de Enfoque Dynamic Focus Box -->
+      <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <div class="w-48 h-48 border-2 border-dashed border-emerald-400 rounded-xl animate-pulse shadow-[0_0_15px_rgba(52,211,153,0.5)]"></div>
+      </div>
+    </div>
+
+    <button onclick="scanner.close()" class="w-full bg-white/20 text-white py-2.5 rounded-xl text-xs font-semibold z-10">Cancelar</button>
   </div>
 
   <script src="./js/db.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/sync.js"></script>
   <script src="./js/scanner.js"></script>
-  <script src="./js/print.js"></script>
   <script src="./js/reports.js"></script>
   <script src="./js/app.js"></script>
 </body>

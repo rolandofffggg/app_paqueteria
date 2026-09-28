@@ -103,7 +103,7 @@ class App {
       const container = document.getElementById(`list-opts-${type}`);
       if (container) {
         container.innerHTML = this.catalog[type].map(opt => `
-          <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] border">
+          <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold border">
             ${opt}
             <button onclick="app.removeCatalogOption('${type}', '${opt}')" class="text-red-500 font-bold ml-1">&times;</button>
           </span>
@@ -126,6 +126,57 @@ class App {
   async removeCatalogOption(type, value) {
     this.catalog[type] = this.catalog[type].filter(item => item !== value);
     await this.saveCatalogSettings();
+  }
+
+  // --- RESGUARDO Y RESTAURACIÓN DE DATOS (BACKUP / RESTORE JSON) ---
+  async exportBackup() {
+    const packages = await db.getAll('packages');
+    const settings = await db.getAll('settings');
+    const syncQueue = await db.getAll('syncQueue');
+
+    const backupData = {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      packages,
+      settings,
+      syncQueue
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute("href", dataStr);
+    dlAnchor.setAttribute("download", `Backup_Paqueteria_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(dlAnchor);
+    dlAnchor.click();
+    dlAnchor.remove();
+  }
+
+  async importBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.packages && Array.isArray(data.packages)) {
+          for (const pkg of data.packages) {
+            await db.put('packages', pkg);
+          }
+        }
+        if (data.settings && Array.isArray(data.settings)) {
+          for (const st of data.settings) {
+            await db.put('settings', st);
+          }
+        }
+        alert('¡Restauración completada con éxito!');
+        location.reload();
+      } catch (err) {
+        alert('Error al leer el archivo JSON de respaldo.');
+        console.error(err);
+      }
+    };
+    reader.readAsText(file);
   }
 
   // --- TARIFAS ---
@@ -256,23 +307,61 @@ class App {
     }
   }
 
-  // --- RECEPCIÓN (VALIDACIONES DE FORMATO Y UNICIDAD EN FASE 8) ---
+  // --- AUTOCOMPLETADO DE CLIENTE Y TELÉFONO ---
+  async handleClientAutocomplete(value) {
+    const listEl = document.getElementById('client-suggestions');
+    if (!value || value.trim().length < 2) { 
+      if (listEl) listEl.classList.add('hidden'); 
+      return; 
+    }
+
+    const packages = await db.getAll('packages');
+    const clientMap = new Map();
+    packages.forEach(p => {
+      if (p.client) clientMap.set(p.client.toLowerCase(), { name: p.client, phone: p.phone || '' });
+    });
+
+    const matches = Array.from(clientMap.values()).filter(c => c.name.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
+
+    if (matches.length === 0) { 
+      if (listEl) listEl.classList.add('hidden'); 
+      return; 
+    }
+
+    if (listEl) {
+      listEl.innerHTML = matches.map(c => `
+        <div onclick="app.selectClientSuggestion('${c.name.replace(/'/g, "\\'")}', '${c.phone}')" class="p-2 hover:bg-slate-50 cursor-pointer text-slate-700 font-bold">
+          👤 ${c.name} ${c.phone ? '<span class="text-slate-400 font-normal">(' + c.phone + ')</span>' : ''}
+        </div>
+      `).join('');
+      listEl.classList.remove('hidden');
+    }
+  }
+
+  selectClientSuggestion(clientName, phone) {
+    document.getElementById('rec-cliente').value = clientName;
+    if (phone) {
+      document.getElementById('rec-celular').value = phone;
+    }
+    const listEl = document.getElementById('client-suggestions');
+    if (listEl) listEl.classList.add('hidden');
+  }
+
+  // --- RECEPCIÓN ---
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
     
-    // 1. Validación de Formato (Exactamente 5 caracteres: Comienza con Letra, Termina con Número)
+    // Validaciones
     const codeFormatRegex = /^[A-Za-z].{3}[0-9]$/;
     if (pkgCode.length !== 5 || !codeFormatRegex.test(pkgCode)) {
-      alert('El código del paquete debe tener exactamente 5 caracteres, iniciar con una letra y terminar con un número (Ejemplo: P0001).');
+      alert('El código debe tener exactamente 5 caracteres (Ej: P0001).');
       return;
     }
 
-    // 2. Validación de Unicidad en IndexedDB
     const packages = await db.getAll('packages');
-    const duplicate = packages.some(p => (p.code || '').toUpperCase() === pkgCode);
-    if (duplicate) {
-      alert(`El código de paquete "${pkgCode}" ya se encuentra registrado en el sistema. Ingrese uno diferente.`);
+    if (packages.some(p => (p.code || '').toUpperCase() === pkgCode)) {
+      alert(`El código "${pkgCode}" ya existe. Ingrese uno diferente.`);
       return;
     }
 
@@ -283,17 +372,11 @@ class App {
     const keepClient = document.getElementById('chk-keep-client').checked;
 
     if (!locationVal || locationVal.includes('?')) {
-      alert('Por favor complete la selección de Estante y Fila.');
+      alert('Complete la selección de Estante y Fila.');
       return;
     }
 
     const pkgId = 'PKG-' + Date.now();
-    const creationTimestamp = new Date().toISOString();
-
-    const categoryVal = document.getElementById('rec-categoria').value || 'OTROS';
-    const sizeVal = document.getElementById('rec-tamano').value || 'PEQUEÑO';
-    const colorVal = document.getElementById('rec-color').value || 'NEGRO';
-
     const pkg = {
       packageId: pkgId,
       code: pkgCode,
@@ -301,12 +384,12 @@ class App {
       client: clientName,
       phone: phoneClient,
       recipientPhone: phoneRecipient,
-      category: categoryVal,
-      size: sizeVal,
-      color: colorVal,
+      category: document.getElementById('rec-categoria').value || 'OTROS',
+      size: document.getElementById('rec-tamano').value || 'PEQUEÑO',
+      color: document.getElementById('rec-color').value || 'NEGRO',
       location: locationVal,
       status: 'PENDIENTE',
-      createdAt: creationTimestamp,
+      createdAt: new Date().toISOString(),
       amountCharged: 0
     };
 
@@ -315,8 +398,7 @@ class App {
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
 
-    // Notificación de Éxito al Usuario
-    alert(`✅ Paquete #${pkg.code} registrado con éxito.`);
+    alert(`✅ Paquete ${pkg.code} registrado con éxito.`);
 
     if (keepClient) {
       document.getElementById('rec-codigo').value = '';
@@ -339,22 +421,19 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- MÓDULO DE IMPRESIÓN Y NOTIFICACIONES (NUEVO EN FASE 8) ---
+  // --- MÓDULO DE NOTIFICACIONES ---
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
 
-    // Cargar por defecto el último registro
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
       printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
       return;
     }
 
-    // Orden descendente por fecha de creación
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const targetPkg = packages[0];
-    this.renderPrintCard(targetPkg);
+    this.renderPrintCard(packages[0]);
   }
 
   async searchPrintPackage(query) {
@@ -394,25 +473,28 @@ class App {
     const hasClientPhone = !!pkg.phone;
     const hasRecipientPhone = !!pkg.recipientPhone;
 
+    // Normalización de Código (Sin el prefijo #) y Ficha Informativa
     printCard.innerHTML = `
-      <div class="text-xl font-black text-slate-800 font-mono">#${pkg.code}</div>
+      <div class="text-xl font-black text-slate-800 font-mono">${pkg.code}</div>
       <div class="flex justify-center py-1">${qrImg}</div>
-      <p class="text-xs font-semibold text-slate-700">${pkg.client} (${pkg.phone || 'Sin Celular'})</p>
-      <p class="text-[11px] text-slate-500">Ubicación: <strong class="text-blue-600 font-mono">${pkg.location}</strong> | Cat: ${pkg.category}</p>
       
-      <div class="space-y-1.5 pt-2 border-t">
-        <button onclick='printer.printLabel(${JSON.stringify(pkg)})' class="w-full bg-emerald-600 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
-          🖨️ Imprimir Etiqueta
-        </button>
-        
+      <!-- Ficha Informativa Adjunta al QR -->
+      <div class="bg-slate-50 p-2.5 rounded-lg border text-left text-xs space-y-1 my-2">
+        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        <p><strong>Contenido:</strong> ${pkg.category} | <strong>Tamaño:</strong> ${pkg.size} | <strong>Color:</strong> ${pkg.color}</p>
+        <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
+      </div>
+
+      <div class="space-y-1.5 pt-1">
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
           Enviar WhatsApp Cliente
         </button>
 
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
           Enviar WhatsApp Destinatario
         </button>
@@ -431,7 +513,7 @@ class App {
 `--------------------------------------------------
 📦 Nombre: ${company}
 --------------------------------------------------
-*Código:* #${pkg.code}
+*Código:* ${pkg.code}
 *Cliente:* ${pkg.client} (${pkg.phone || 'N/A'})
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Color:* ${pkg.color}
@@ -451,7 +533,6 @@ class App {
     const query = (document.getElementById('manage-search')?.value || '').toLowerCase();
     const packages = await db.getAll('packages');
 
-    // Orden descendente (más reciente al más antiguo)
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const filtered = packages.filter(p => 
@@ -468,7 +549,7 @@ class App {
     listEl.innerHTML = filtered.map(p => `
       <div class="bg-white p-2.5 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
         <div>
-          <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
+          <span class="font-mono font-bold text-slate-800">${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
           <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Tel: ${p.phone || 'N/A'}</div>
         </div>
         <div class="flex gap-1">
@@ -580,29 +661,6 @@ class App {
     syncEngine.processQueue();
   }
 
-  async handleClientAutocomplete(value) {
-    const listEl = document.getElementById('client-suggestions');
-    if (!value || value.trim().length < 2) { listEl.classList.add('hidden'); return; }
-
-    const packages = await db.getAll('packages');
-    const clients = [...new Set(packages.map(p => p.client).filter(Boolean))];
-    const matches = clients.filter(c => c.toLowerCase().includes(value.toLowerCase())).slice(0, 5);
-
-    if (matches.length === 0) { listEl.classList.add('hidden'); return; }
-
-    listEl.innerHTML = matches.map(c => `
-      <div onclick="app.selectClientSuggestion('${c.replace(/'/g, "\\'")}')" class="p-2 hover:bg-slate-50 cursor-pointer text-slate-700 font-medium">
-        👤 ${c}
-      </div>
-    `).join('');
-    listEl.classList.remove('hidden');
-  }
-
-  selectClientSuggestion(clientName) {
-    document.getElementById('rec-cliente').value = clientName;
-    document.getElementById('client-suggestions').classList.add('hidden');
-  }
-
   // --- ENTREGA ---
   async searchDeliveryManual() {
     const code = document.getElementById('del-search-code').value.trim();
@@ -694,14 +752,12 @@ class App {
     document.getElementById('kpi-pendientes').textContent = pendientes.length;
     document.getElementById('kpi-ingresos').textContent = `Bs. ${ingresosHoy.toFixed(2)}`;
     
-    // KPI Acumulado Total Registros
     const kpiAcumulados = document.getElementById('kpi-acumulados');
     if (kpiAcumulados) kpiAcumulados.textContent = packages.length;
 
     const query = (document.getElementById('search-input')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('filter-status')?.value || 'PENDIENTE';
 
-    // Ordenamiento descendente (más recientes primero)
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     let filtered = packages.filter(p => {
@@ -718,30 +774,23 @@ class App {
       return;
     }
 
+    // Depuración: Eliminados los enlaces/botones de "Ticket" e impresión individual
     listEl.innerHTML = filtered.map(p => `
       <div class="bg-white p-2.5 rounded-xl border border-slate-200 flex justify-between items-center text-xs shadow-sm">
         <div>
-          <span class="font-mono font-bold text-slate-800">#${p.code}</span> - <span class="font-semibold text-slate-700">${p.client}</span>
+          <span class="font-mono font-bold text-slate-800">${p.code}</span> - <span class="font-bold text-slate-700">${p.client}</span>
           <div class="text-[10px] text-slate-400 mt-0.5">Ub: <strong class="text-slate-600">${p.location}</strong> | Cat: ${p.category || 'OTROS'}</div>
           ${p.deliveredTo ? `<div class="text-[10px] text-emerald-600">Retiró: ${p.deliveredTo} (Bs.${(p.amountCharged || 0).toFixed(2)})</div>` : ''}
         </div>
         <div class="flex flex-col items-end gap-1">
           <span class="px-2 py-0.5 ${p.status === 'ENTREGADO' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'} font-bold rounded text-[9px]">${p.status}</span>
-          <button onclick='printer.printLabel(${JSON.stringify(p)})' class="text-[10px] text-blue-600 underline">🖨️ Ticket</button>
         </div>
       </div>
     `).join('');
   }
 
-  printCurrentPackage() {
-    if (this.lastCreatedPackage) {
-      printer.printLabel(this.lastCreatedPackage);
-    }
-  }
-
   async downloadReport() {
     const packages = await db.getAll('packages');
-    // Garantizar orden descendente en exportación CSV
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     reports.exportToCSV(packages, `Reporte_Paqueteria_${new Date().toISOString().split('T')[0]}.csv`);
   }

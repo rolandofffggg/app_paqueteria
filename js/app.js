@@ -214,18 +214,31 @@ class App {
 
     // Confirmación por WhatsApp (Cliente y Remitente/Destinatario)
     if (sendWA) {
-      const msgText = encodeURIComponent(`Hola, confirmamos la recepción del paquete #${pkg.code} en Paquetería.\n\n👤 Cliente: ${clientName}\n📍 Ubicación: ${pkg.location}\n📦 Contenido: ${pkg.category}\n🎨 Color: ${pkg.color}`);
-      
-      if (phoneClient) {
-        const cleanClientPhone = phoneClient.replace(/\D/g, '');
-        window.open(`https://wa.me/${cleanClientPhone}?text=${msgText}`, '_blank');
-      }
-      
-      if (phoneRecipient) {
-        const cleanRecPhone = phoneRecipient.replace(/\D/g, '');
-        setTimeout(() => {
-          window.open(`https://wa.me/${cleanRecPhone}?text=${msgText}`, '_blank');
-        }, 500);
+      const message = `Hola, confirmamos la recepción del paquete #${pkg.code} en Paquetería.
+    
+    👤 Cliente: ${clientName}
+    📍 Ubicación: ${pkg.location}
+    📦 Contenido: ${pkg.category}
+    📏 Tamaño: ${pkg.size}
+    🎨 Color: ${pkg.color}`;
+    
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify({
+          action: 'sendWhatsApp',
+          phoneClient: phoneClient,
+          phoneRecipient: phoneRecipient,
+          message: message
+        })
+      });
+    
+      const result = await response.json();
+    
+      if (!result.success) {
+        alert('No se pudieron enviar uno o ambos mensajes.');
       }
     }
 

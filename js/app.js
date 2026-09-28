@@ -429,12 +429,12 @@ class App {
 
     const message = 
 `--------------------------------------------------
-📦 Paqueteria: ${company}
+📦 Nombre: ${company}
 --------------------------------------------------
 *Código:* #${pkg.code}
 *Cliente:* ${pkg.client} (${pkg.phone || 'N/A'})
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
-*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
+*Contenido:* ${pkg.category} | *Color:* ${pkg.color}
 --------------------------------------------------
 💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
 📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;

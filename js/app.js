@@ -6,6 +6,12 @@ class App {
     this.selectedShelf = null;
     this.selectedRow = null;
     this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
+    this.companyName = '';
+    this.catalog = {
+      categories: ['ROPA', 'JOYAS', 'REPUESTOS', 'DOCUMENTOS', 'ELECTRÓNICA', 'OTROS'],
+      sizes: ['PEQUEÑO', 'MEDIANO', 'GRANDE'],
+      colors: ['AMARILLO', 'ROJO', 'AZUL', 'NEGRO', 'BLANCO', 'VERDE', 'OTRO']
+    };
   }
 
   async init() {
@@ -13,7 +19,10 @@ class App {
     if (localStorage.getItem('pt_logged') === 'true') {
       document.getElementById('view-login').classList.add('hidden');
     }
+    await this.loadBrandSettings();
     await this.loadTariffSettings();
+    await this.loadCatalogSettings();
+    
     this.initNetwork();
     this.loadDashboard();
     this.renderShelfButtons();
@@ -33,7 +42,93 @@ class App {
     }
   }
 
-  // --- MÓDULO DE AJUSTES Y TARIFAS ---
+  // --- CONFIGURACIÓN DE MARCA ---
+  async loadBrandSettings() {
+    const saved = await db.get('settings', 'brand');
+    this.companyName = saved && saved.value ? saved.value : '';
+    const headerTitle = document.getElementById('header-app-title');
+    if (headerTitle) {
+      headerTitle.textContent = this.companyName ? `📦 Paquetería - ${this.companyName}` : '📦 Paquetería';
+    }
+    const inputComp = document.getElementById('cfg-company-name');
+    if (inputComp) inputComp.value = this.companyName;
+  }
+
+  async saveBrandSettings(e) {
+    e.preventDefault();
+    const val = document.getElementById('cfg-company-name').value.trim();
+    this.companyName = val;
+    await db.put('settings', { key: 'brand', value: val });
+    this.loadBrandSettings();
+    alert('¡Nombre de paquetería guardado correctamente!');
+  }
+
+  // --- CATALOGACIÓN DINÁMICA ---
+  async loadCatalogSettings() {
+    const saved = await db.get('settings', 'catalog');
+    if (saved && saved.value) {
+      this.catalog = saved.value;
+    }
+    this.populateReceptionSelects();
+    this.renderCatalogAdminLists();
+  }
+
+  async saveCatalogSettings() {
+    await db.put('settings', { key: 'catalog', value: this.catalog });
+    this.populateReceptionSelects();
+    this.renderCatalogAdminLists();
+  }
+
+  populateReceptionSelects() {
+    const catSel = document.getElementById('rec-categoria');
+    const sizeSel = document.getElementById('rec-tamano');
+    const colSel = document.getElementById('rec-color');
+
+    if (catSel) {
+      catSel.innerHTML = '<option value="" disabled selected>Contenido</option>' +
+        this.catalog.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+    if (sizeSel) {
+      sizeSel.innerHTML = '<option value="" disabled selected>Tamaño</option>' +
+        this.catalog.sizes.map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+    if (colSel) {
+      colSel.innerHTML = '<option value="" disabled selected>Color</option>' +
+        this.catalog.colors.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+  }
+
+  renderCatalogAdminLists() {
+    ['categories', 'sizes', 'colors'].forEach(type => {
+      const container = document.getElementById(`list-opts-${type}`);
+      if (container) {
+        container.innerHTML = this.catalog[type].map(opt => `
+          <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] border">
+            ${opt}
+            <button onclick="app.removeCatalogOption('${type}', '${opt}')" class="text-red-500 font-bold ml-1">&times;</button>
+          </span>
+        `).join('');
+      }
+    });
+  }
+
+  async addCatalogOption(type, inputId) {
+    const input = document.getElementById(inputId);
+    const val = input.value.trim().toUpperCase();
+    if (!val) return;
+    if (!this.catalog[type].includes(val)) {
+      this.catalog[type].push(val);
+      await this.saveCatalogSettings();
+    }
+    input.value = '';
+  }
+
+  async removeCatalogOption(type, value) {
+    this.catalog[type] = this.catalog[type].filter(item => item !== value);
+    await this.saveCatalogSettings();
+  }
+
+  // --- TARIFAS ---
   async loadTariffSettings() {
     const saved = await db.get('settings', 'tariffs');
     if (saved && saved.value) {
@@ -71,7 +166,7 @@ class App {
   }
 
   showSec(secId) {
-    ['sec-dashboard', 'sec-reception', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings'].forEach(id => {
+    ['sec-dashboard', 'sec-reception', 'sec-print-notify', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -83,6 +178,8 @@ class App {
       this.renderShelfButtons();
     } else if (secId === 'sec-manage') {
       this.loadManageList();
+    } else if (secId === 'sec-print-notify') {
+      this.loadPrintNotifyView();
     }
   }
 
@@ -159,16 +256,31 @@ class App {
     }
   }
 
-  // --- RECEPCIÓN Y ENVÍO DE WHATSAPP ---
+  // --- RECEPCIÓN (VALIDACIONES DE FORMATO Y UNICIDAD EN FASE 8) ---
   async savePackage(e) {
     e.preventDefault();
-    const pkgCode = document.getElementById('rec-codigo').value.trim();
+    const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
+    
+    // 1. Validación de Formato (Exactamente 5 caracteres: Comienza con Letra, Termina con Número)
+    const codeFormatRegex = /^[A-Za-z].{3}[0-9]$/;
+    if (pkgCode.length !== 5 || !codeFormatRegex.test(pkgCode)) {
+      alert('El código del paquete debe tener exactamente 5 caracteres, iniciar con una letra y terminar con un número (Ejemplo: P0001).');
+      return;
+    }
+
+    // 2. Validación de Unicidad en IndexedDB
+    const packages = await db.getAll('packages');
+    const duplicate = packages.some(p => (p.code || '').toUpperCase() === pkgCode);
+    if (duplicate) {
+      alert(`El código de paquete "${pkgCode}" ya se encuentra registrado en el sistema. Ingrese uno diferente.`);
+      return;
+    }
+
     const clientName = document.getElementById('rec-cliente').value.trim();
     const phoneClient = document.getElementById('rec-celular').value.trim();
     const phoneRecipient = document.getElementById('rec-celular-dest').value.trim();
     const locationVal = document.getElementById('rec-ubicacion').value;
     const keepClient = document.getElementById('chk-keep-client').checked;
-    const sendWA = document.getElementById('chk-send-wa').checked;
 
     if (!locationVal || locationVal.includes('?')) {
       alert('Por favor complete la selección de Estante y Fila.');
@@ -203,44 +315,8 @@ class App {
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
 
-    const qr = qrcode(4, 'L');
-    qr.addData(pkg.qrCode);
-    qr.make();
-    
-    document.getElementById('qrcode-target').innerHTML = qr.createImgTag(5);
-    document.getElementById('res-code').textContent = pkg.code;
-    document.getElementById('res-client').textContent = `${pkg.client} (${new Date(creationTimestamp).toLocaleString()})`;
-    document.getElementById('qr-result').classList.remove('hidden');
-
-    // Confirmación por WhatsApp (Cliente y Remitente/Destinatario)
-    if (sendWA) {
-      const message = `Hola, confirmamos la recepción del paquete #${pkg.code} en Paquetería.
-    
-    👤 Cliente: ${clientName}
-    📍 Ubicación: ${pkg.location}
-    📦 Contenido: ${pkg.category}
-    📏 Tamaño: ${pkg.size}
-    🎨 Color: ${pkg.color}`;
-    
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8'
-        },
-        body: JSON.stringify({
-          action: 'sendWhatsApp',
-          phoneClient: phoneClient,
-          phoneRecipient: phoneRecipient,
-          message: message
-        })
-      });
-    
-      const result = await response.json();
-    
-      if (!result.success) {
-        alert('No se pudieron enviar uno o ambos mensajes.');
-      }
-    }
+    // Notificación de Éxito al Usuario
+    alert(`✅ Paquete #${pkg.code} registrado con éxito.`);
 
     if (keepClient) {
       document.getElementById('rec-codigo').value = '';
@@ -263,13 +339,120 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- MÓDULO DE GESTIÓN (EDITAR / ELIMINAR) ---
+  // --- MÓDULO DE IMPRESIÓN Y NOTIFICACIONES (NUEVO EN FASE 8) ---
+  async loadPrintNotifyView() {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+
+    // Cargar por defecto el último registro
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
+      return;
+    }
+
+    // Orden descendente por fecha de creación
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const targetPkg = packages[0];
+    this.renderPrintCard(targetPkg);
+  }
+
+  async searchPrintPackage(query) {
+    const q = (query || '').toLowerCase().trim();
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+
+    const packages = await db.getAll('packages');
+    if (!q) {
+      this.loadPrintNotifyView();
+      return;
+    }
+
+    const filtered = packages.filter(p => 
+      (p.code || '').toLowerCase().includes(q) || 
+      (p.client || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete.</p>';
+      return;
+    }
+
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    this.renderPrintCard(filtered[0]);
+  }
+
+  renderPrintCard(pkg) {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard || !pkg) return;
+
+    const qr = qrcode(4, 'L');
+    qr.addData(pkg.qrCode);
+    qr.make();
+    const qrImg = qr.createImgTag(5);
+
+    const hasClientPhone = !!pkg.phone;
+    const hasRecipientPhone = !!pkg.recipientPhone;
+
+    printCard.innerHTML = `
+      <div class="text-xl font-black text-slate-800 font-mono">#${pkg.code}</div>
+      <div class="flex justify-center py-1">${qrImg}</div>
+      <p class="text-xs font-semibold text-slate-700">${pkg.client} (${pkg.phone || 'Sin Celular'})</p>
+      <p class="text-[11px] text-slate-500">Ubicación: <strong class="text-blue-600 font-mono">${pkg.location}</strong> | Cat: ${pkg.category}</p>
+      
+      <div class="space-y-1.5 pt-2 border-t">
+        <button onclick='printer.printLabel(${JSON.stringify(pkg)})' class="w-full bg-emerald-600 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
+          🖨️ Imprimir Etiqueta
+        </button>
+        
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+          Enviar WhatsApp Cliente
+        </button>
+
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-semibold py-2 rounded-lg text-xs flex items-center justify-center gap-1">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
+          Enviar WhatsApp Destinatario
+        </button>
+      </div>
+    `;
+  }
+
+  sendWhatsAppNotification(pkg, type) {
+    const phone = type === 'client' ? pkg.phone : pkg.recipientPhone;
+    if (!phone) return;
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
+
+    const message = 
+`--------------------------------------------------
+📦 Nombre: ${company}
+--------------------------------------------------
+*Código:* #${pkg.code}
+*Cliente:* ${pkg.client} (${pkg.phone || 'N/A'})
+*Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
+*Contenido:* ${pkg.category} | *Color:* ${pkg.color}
+--------------------------------------------------
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
+📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;
+
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
+  // --- GESTIÓN (EDITAR / ELIMINAR) ---
   async loadManageList() {
     const listEl = document.getElementById('manage-list');
     if (!listEl) return;
 
     const query = (document.getElementById('manage-search')?.value || '').toLowerCase();
     const packages = await db.getAll('packages');
+
+    // Orden descendente (más reciente al más antiguo)
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const filtered = packages.filter(p => 
       (p.client || '').toLowerCase().includes(query) ||
@@ -356,7 +539,7 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- INVENTARIO ---
+  // --- INVENTARIO / UBICACIONES ---
   setFixedLocationManual() {
     const val = document.getElementById('inv-loc-input').value.trim();
     if (!val) { alert('Ingrese una ubicación válida'); return; }
@@ -494,6 +677,7 @@ class App {
     syncEngine.processQueue();
   }
 
+  // --- DASHBOARD / INVENTARIO ---
   async loadDashboard() {
     const packages = await db.getAll('packages');
     const todayStr = new Date().toISOString().split('T')[0];
@@ -509,9 +693,16 @@ class App {
     document.getElementById('kpi-entregados').textContent = entregadosHoy;
     document.getElementById('kpi-pendientes').textContent = pendientes.length;
     document.getElementById('kpi-ingresos').textContent = `Bs. ${ingresosHoy.toFixed(2)}`;
+    
+    // KPI Acumulado Total Registros
+    const kpiAcumulados = document.getElementById('kpi-acumulados');
+    if (kpiAcumulados) kpiAcumulados.textContent = packages.length;
 
     const query = (document.getElementById('search-input')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('filter-status')?.value || 'PENDIENTE';
+
+    // Ordenamiento descendente (más recientes primero)
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     let filtered = packages.filter(p => {
       const matchQuery = (p.client || '').toLowerCase().includes(query) || 
@@ -550,6 +741,8 @@ class App {
 
   async downloadReport() {
     const packages = await db.getAll('packages');
+    // Garantizar orden descendente en exportación CSV
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     reports.exportToCSV(packages, `Reporte_Paqueteria_${new Date().toISOString().split('T')[0]}.csv`);
   }
 

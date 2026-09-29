@@ -514,7 +514,7 @@ class App {
 📦 Paqueteria: ${company}
 --------------------------------------------------
 *Código:* ${pkg.code}
-*Cliente:* ${pkg.client} (${pkg.phone || 'N/A'})
+*Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------

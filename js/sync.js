@@ -1,6 +1,7 @@
 class SyncEngine {
   constructor() {
     this.isSyncing = false;
+    this.autoSyncInterval = null;
   }
 
   async processQueue() {
@@ -10,11 +11,13 @@ class SyncEngine {
     const syncStatusEl = document.getElementById('sync-status');
     
     try {
-      // 1. PUSH: Enviar cambios locales pendientes a la nube
+      // 1. PUSH: Enviar cola local pendiente
       const queue = await db.getAll('syncQueue');
       if (queue.length > 0) {
-        syncStatusEl.textContent = `Enviando: ${queue.length}`;
-        syncStatusEl.classList.remove('hidden');
+        if (syncStatusEl) {
+          syncStatusEl.textContent = `Enviando (${queue.length})...`;
+          syncStatusEl.classList.remove('hidden');
+        }
 
         const success = await api.sendBatch(queue);
         if (success) {
@@ -24,16 +27,19 @@ class SyncEngine {
         }
       }
 
-      // 2. PULL: Traer datos frescos de Google Sheets
-      syncStatusEl.textContent = `Actualizando...`;
-      syncStatusEl.classList.remove('hidden');
+      // 2. PULL: Descargar registros actualizados de la nube
+      if (syncStatusEl) {
+        syncStatusEl.textContent = `Actualizando...`;
+        syncStatusEl.classList.remove('hidden');
+      }
 
       const remotePackages = await api.fetchPackages();
       if (remotePackages && Array.isArray(remotePackages)) {
+        const remainingQueue = await db.getAll('syncQueue');
+        
         for (const remotePkg of remotePackages) {
-          const localPkg = await db.get('packages', remotePkg.packageId);
-          // Actualizar en local solo si no hay cambios locales pendientes para este paquete
-          const inQueue = queue.some(q => q.payload.packageId === remotePkg.packageId);
+          // Si el paquete no tiene operaciones locales pendientes en cola, actualizar IndexedDB
+          const inQueue = remainingQueue.some(q => q.payload && q.payload.packageId === remotePkg.packageId);
           if (!inQueue) {
             await db.put('packages', remotePkg);
           }
@@ -42,11 +48,33 @@ class SyncEngine {
     } catch (e) {
       console.error('Error durante la sincronización:', e);
     } finally {
-      syncStatusEl.classList.add('hidden');
+      if (syncStatusEl) {
+        syncStatusEl.classList.add('hidden');
+      }
       this.isSyncing = false;
-      if (window.app) app.loadDashboard();
+
+      // Refrescar vistas en pantalla si existen
+      if (window.app) {
+        app.loadDashboard();
+        app.loadManageList();
+      }
     }
+  }
+
+  // Sincronización periódica automática (Cada 30 segundos si hay conexión)
+  startAutoSync(intervalMs = 30000) {
+    if (this.autoSyncInterval) clearInterval(this.autoSyncInterval);
+    this.autoSyncInterval = setInterval(() => {
+      if (navigator.onLine) {
+        this.processQueue();
+      }
+    }, intervalMs);
   }
 }
 
 const syncEngine = new SyncEngine();
+
+// Iniciar sincronización automática al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  syncEngine.startAutoSync(30000);
+});

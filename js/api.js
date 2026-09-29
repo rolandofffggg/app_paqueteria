@@ -1,3 +1,4 @@
+// Reemplaza esta URL con el enlace de tu Web App desplegada en Google Apps Script
 const API_URL = 'REEMPLAZAR_CON_TU_URL_DE_GOOGLE_APPS_SCRIPT';
 
 const api = {
@@ -10,23 +11,25 @@ const api = {
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'syncBatch', operations })
       });
+      if (!res.ok) return false;
       const data = await res.json();
-      return data.success;
+      return !!data.success;
     } catch (e) {
-      console.error('Error Sync Push:', e);
+      console.error('Error Sync Push (sendBatch):', e);
       return false;
     }
   },
 
-  // Sincronización Pull (Nube -> Local) [Fase 2]
+  // Sincronización Pull (Nube -> Local)
   async fetchPackages() {
     if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) return null;
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(API_URL, { method: 'GET' });
+      if (!res.ok) return null;
       const data = await res.json();
-      return data.success ? data.packages : null;
+      return data.success && Array.isArray(data.packages) ? data.packages : null;
     } catch (e) {
-      console.error('Error Sync Pull:', e);
+      console.error('Error Sync Pull (fetchPackages):', e);
       return null;
     }
   }

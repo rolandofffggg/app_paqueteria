@@ -1,5 +1,5 @@
 // Reemplaza esta URL con el enlace de tu Web App desplegada en Google Apps Script
-const API_URL = 'REEMPLAZAR_CON_TU_URL_DE_GOOGLE_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyOZpnkHZUu13TURsRMx4cuwkpN5JqPzHE2Fc6bBe_yyAAwIV9pGQqmwWoN8220aqMGgA/exec';
 
 const api = {
   // Sincronización Push (Local -> Nube)

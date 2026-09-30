@@ -323,6 +323,7 @@ class App {
     }).join('');
   }
 
+// --- GESTIÓN DE USUARIOS CON SINCRONIZACIÓN REMOTA ---
   async saveUser(e) {
     e.preventDefault();
     if (!auth.isAdmin()) return;
@@ -353,12 +354,25 @@ class App {
       createdAt: existingUser ? existingUser.createdAt : new Date().toISOString()
     };
 
+    // 1. Guardar en base de datos local (IndexedDB)
     await db.put('users', userObj);
+
+    // 2. Registrar en la cola de sincronización remota para ParcelTrack_DB
+    await db.put('syncQueue', {
+      id: 'SYNC-USR-' + Date.now(),
+      type: 'SYNC_USER',
+      payload: userObj
+    });
+
     this.showToast(`Usuario "${username}" guardado correctamente.`, 'success');
     this.resetUserForm();
     this.loadUsersList();
+
+    // 3. Procesar cola de sincronización
+    syncEngine.processQueue();
   }
 
+  
   async editUser(username) {
     const u = await db.get('users', username);
     if (!u) return;
@@ -372,7 +386,7 @@ class App {
     document.getElementById('usr-form-title').textContent = `Editar Usuario: ${u.username}`;
   }
 
-  async toggleUserStatus(username) {
+async toggleUserStatus(username) {
     const currentUser = auth.getUser();
     if (currentUser && currentUser.username === username) {
       this.showToast('Restricción: No puede bloquear su propio usuario activo.');
@@ -383,16 +397,22 @@ class App {
     if (!u) return;
 
     u.status = u.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+    
+    // 1. Actualizar localmente
     await db.put('users', u);
+
+    // 2. Registrar cambio de estado en la cola de sincronización
+    await db.put('syncQueue', {
+      id: 'SYNC-USR-' + Date.now(),
+      type: 'SYNC_USER',
+      payload: u
+    });
+
     this.showToast(`Estado de "${u.username}" cambiado a ${u.status}`, 'success');
     this.loadUsersList();
-  }
 
-  resetUserForm() {
-    document.getElementById('form-user-manage').reset();
-    document.getElementById('usr-username').readOnly = false;
-    document.getElementById('usr-is-edit').value = 'false';
-    document.getElementById('usr-form-title').textContent = 'Crear Nuevo Usuario';
+    // 3. Procesar cola de sincronización
+    syncEngine.processQueue();
   }
 
   // --- DASHBOARD CON MOSTRADO DE AUDITORÍA ---

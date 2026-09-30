@@ -12,51 +12,42 @@ class SyncEngine {
       if (queue.length > 0) {
         for (const item of queue) {
           try {
-            await api.syncItem(item);
+            await api.sendSyncItem(item);
             await db.delete('syncQueue', item.id);
           } catch (err) {
-            console.error('Error al sincronizar elemento individual:', err);
+            console.error('Error al enviar item de sincronización:', err);
+            break; // Si falla la red, interrumpe el ciclo hasta la próxima reconexión
           }
         }
       }
 
-      // Sincronización bidireccional de datos remotos (Paquetes y Usuarios)
-      await this.pullRemoteData();
+      // Descargar cambios remotos de otros usuarios
+      await this.pullRemoteChanges();
     } catch (e) {
-      console.error('Error general durante la sincronización:', e);
+      console.error('Error durante el proceso de sincronización:', e);
     } finally {
       this.isSyncing = false;
-      if (typeof app !== 'undefined' && app.loadDashboard) {
+      if (typeof app !== 'undefined') {
         app.loadDashboard();
       }
     }
   }
 
-  async pullRemoteData() {
+  async pullRemoteChanges() {
     try {
-      const remoteData = await api.fetchLatestData();
-      
-      // 1. Sincronizar Paquetes Remotos
-      if (remoteData && remoteData.packages) {
-        for (const remotePkg of remoteData.packages) {
+      const remoteData = await api.getRemotePackages();
+      if (Array.isArray(remoteData)) {
+        for (const remotePkg of remoteData) {
           const localPkg = await db.get('packages', remotePkg.packageId);
-          if (!localPkg || new Date(remotePkg.updatedAt || remotePkg.createdAt) > new Date(localPkg.updatedAt || localPkg.createdAt)) {
+          
+          // Si no existe localmente o la versión remota es más reciente, actualiza IndexedDB
+          if (!localPkg || (remotePkg.updatedAt && new Date(remotePkg.updatedAt) > new Date(localPkg.updatedAt || localPkg.createdAt))) {
             await db.put('packages', remotePkg);
           }
         }
       }
-
-      // 2. Sincronizar Usuarios Remotos
-      if (remoteData && remoteData.users) {
-        for (const remoteUser of remoteData.users) {
-          const localUser = await db.get('users', remoteUser.username);
-          if (!localUser || new Date(remoteUser.updatedAt || remoteUser.createdAt) > new Date(localUser.updatedAt || localUser.createdAt)) {
-            await db.put('users', remoteUser);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('No se pudo completar la descarga de datos remotos:', err);
+    } catch (e) {
+      console.warn('No se pudieron descargar actualizaciones remotas:', e);
     }
   }
 }

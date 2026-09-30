@@ -16,9 +16,14 @@ class App {
 
   async init() {
     await db.init();
-    if (localStorage.getItem('pt_logged') === 'true') {
+    const isAuthenticated = await auth.init();
+    
+    if (isAuthenticated) {
       document.getElementById('view-login').classList.add('hidden');
+    } else {
+      document.getElementById('view-login').classList.remove('hidden');
     }
+
     await this.loadBrandSettings();
     await this.loadTariffSettings();
     await this.loadCatalogSettings();
@@ -32,17 +37,343 @@ class App {
     }
   }
 
-  login() {
+  async login() {
+    const username = document.getElementById('login-username').value;
     const pin = document.getElementById('pin-input').value;
-    if (pin === '1234') {
-      localStorage.setItem('pt_logged', 'true');
+    const remember = document.getElementById('login-remember').checked;
+    const errEl = document.getElementById('login-error');
+
+    const result = await auth.login(username, pin, remember);
+    if (result.success) {
+      errEl.classList.add('hidden');
       document.getElementById('view-login').classList.add('hidden');
+      this.loadDashboard();
     } else {
-      document.getElementById('login-error').classList.remove('hidden');
+      errEl.textContent = result.message;
+      errEl.classList.remove('hidden');
     }
   }
 
-  // --- CONFIGURACIÓN DE MARCA ---
+  showToast(message, type = 'error') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    const bgClass = type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-600' : 'bg-emerald-600';
+    toast.className = `${bgClass} text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-lg transition-all transform duration-300 opacity-0 translate-y-2 mb-2 text-center pointer-events-auto flex justify-between items-center`;
+    toast.innerHTML = `<span>${message}</span><button onclick="this.parentElement.remove()" class="ml-2 font-black">&times;</button>`;
+    
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.remove('opacity-0', 'translate-y-2');
+    }, 10);
+
+    setTimeout(() => {
+      toast.classList.add('opacity-0', '-translate-y-2');
+      setTimeout(() => toast.remove(), 300);
+    }, 4000);
+  }
+
+  // --- NAVEGACIÓN Y CONTROL RBAC ---
+  showSec(secId) {
+    if (!auth.hasAccess(secId)) {
+      this.showToast('Acceso denegado: No tiene permisos para este módulo.', 'warning');
+      secId = 'sec-dashboard';
+    }
+
+    const sections = ['sec-dashboard', 'sec-reception', 'sec-print-notify', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings', 'sec-users'];
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+
+    const targetSec = document.getElementById(secId);
+    if (targetSec) targetSec.classList.remove('hidden');
+
+    // Actualizar clase activa en botones de navegación
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+      if (btn.getAttribute('onclick')?.includes(`'${secId}'`)) {
+        btn.classList.add('active', 'text-blue-600', 'scale-105');
+        btn.classList.remove('text-slate-500');
+      } else {
+        btn.classList.remove('active', 'text-blue-600', 'scale-105');
+        btn.classList.add('text-slate-500');
+      }
+    });
+
+    if (secId === 'sec-reception') {
+      this.renderShelfButtons();
+    } else if (secId === 'sec-manage') {
+      this.loadManageList();
+    } else if (secId === 'sec-print-notify') {
+      this.loadPrintNotifyView();
+    } else if (secId === 'sec-users') {
+      this.loadUsersList();
+    }
+  }
+
+  // --- MÓDULO RECEPCIÓN: NORMALIZACIÓN Y SANITIZACIÓN ---
+  async savePackage(e) {
+    e.preventDefault();
+    const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
+    
+    const codeFormatRegex = /^[A-Za-z].{3}[0-9]$/;
+    if (pkgCode.length !== 5 || !codeFormatRegex.test(pkgCode)) {
+      this.showToast('El código debe tener 5 caracteres (Ej: P0001).');
+      return;
+    }
+
+    const packages = await db.getAll('packages');
+    if (packages.some(p => (p.code || '').toUpperCase() === pkgCode)) {
+      this.showToast(`El código "${pkgCode}" ya existe. Ingrese uno diferente.`);
+      return;
+    }
+
+    // Normalización: Cliente en Mayúsculas
+    const clientName = document.getElementById('rec-cliente').value.toUpperCase().trim();
+    
+    // Sanitización: Teléfonos solo números
+    const rawPhone = document.getElementById('rec-celular').value;
+    const rawRecipientPhone = document.getElementById('rec-celular-dest').value;
+    const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
+    const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
+
+    const locationVal = document.getElementById('rec-ubicacion').value;
+    const keepClient = document.getElementById('chk-keep-client').checked;
+
+    if (!locationVal || locationVal.includes('?')) {
+      this.showToast('Complete la selección de Estante y Fila.');
+      return;
+    }
+
+    const pkgId = 'PKG-' + Date.now();
+    const pkg = {
+      packageId: pkgId,
+      code: pkgCode,
+      qrCode: `PT:${pkgCode}`,
+      client: clientName,
+      phone: phoneClient,
+      recipientPhone: phoneRecipient,
+      category: document.getElementById('rec-categoria').value || 'OTROS',
+      size: document.getElementById('rec-tamano').value || 'PEQUEÑO',
+      color: document.getElementById('rec-color').value || 'NEGRO',
+      location: locationVal,
+      status: 'PENDIENTE',
+      createdAt: new Date().toISOString(),
+      amountCharged: 0
+    };
+
+    this.lastCreatedPackage = pkg;
+
+    await db.put('packages', pkg);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
+
+    this.showToast(`✅ Paquete ${pkg.code} registrado con éxito.`, 'success');
+
+    if (keepClient) {
+      document.getElementById('rec-codigo').value = '';
+      document.getElementById('rec-celular-dest').value = '';
+      document.getElementById('rec-ubicacion').value = '';
+      document.getElementById('rec-categoria').selectedIndex = 0;
+      document.getElementById('rec-tamano').selectedIndex = 0;
+      document.getElementById('rec-color').selectedIndex = 0;
+    } else {
+      document.getElementById('form-reception').reset();
+    }
+
+    this.selectedShelf = null;
+    this.selectedRow = null;
+    this.renderShelfButtons();
+    const rowsContainer = document.getElementById('rows-container');
+    if (rowsContainer) rowsContainer.classList.add('hidden');
+
+    this.loadDashboard();
+    syncEngine.processQueue();
+  }
+
+  // --- MÓDULO UBICACIONES: REGLA DE NEGOCIO Y VALIDACIÓN ---
+  async updatePackageLocation(qrCode, newLocation) {
+    const packages = await db.getAll('packages');
+    const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
+
+    if (!pkg) {
+      this.showToast('Paquete no encontrado.');
+      return;
+    }
+
+    // Regla de Negocio: Reubicación permitida ÚNICAMENTE para paquetes en estado "PENDIENTE"
+    if (pkg.status !== 'PENDIENTE') {
+      this.showToast(`Error: El paquete ${pkg.code} está en estado "${pkg.status}". Reubicación no permitida.`);
+      return;
+    }
+
+    pkg.location = newLocation;
+    pkg.updatedAt = new Date().toISOString();
+
+    await db.put('packages', pkg);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
+
+    const list = document.getElementById('inv-scanned-list');
+    const li = document.createElement('li');
+    li.className = 'py-1.5 flex justify-between font-mono';
+    li.innerHTML = `<span>Code: <strong>${pkg.code}</strong> -> ${newLocation}</span> <span class="text-emerald-600 font-bold">✔ OK</span>`;
+    list.prepend(li);
+
+    this.showToast(`Ubicación de ${pkg.code} actualizada a ${newLocation}`, 'success');
+    this.loadDashboard();
+    syncEngine.processQueue();
+  }
+
+  // --- MÓDULO DE NOTIFICACIONES: FORMATO WHATSAPP BOLIVIA (+591) ---
+  sendWhatsAppNotification(pkg, type) {
+    const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
+    if (!rawPhone) {
+      this.showToast('El paquete no tiene registrado un número telefónico.');
+      return;
+    }
+
+    // Normalización de número
+    let cleanPhone = rawPhone.replace(/\D/g, '');
+    
+    if (cleanPhone.startsWith('591') && cleanPhone.length === 11) {
+      // Formato completo correcto
+    } else if (cleanPhone.length === 8) {
+      cleanPhone = '591' + cleanPhone;
+    } else {
+      this.showToast('Número inválido. Debe ser un número de Bolivia (8 dígitos).');
+      return;
+    }
+
+    const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
+    const message = 
+`--------------------------------------------------
+📦 Paquetería: ${company}
+--------------------------------------------------
+*Código:* ${pkg.code}
+*Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
+*Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
+*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
+--------------------------------------------------
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
+📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;
+
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
+  // --- MÓDULO GESTIÓN DE USUARIOS (SOLO ADMIN) ---
+  async loadUsersList() {
+    if (!auth.isAdmin()) return;
+    const container = document.getElementById('users-list');
+    if (!container) return;
+
+    const users = await db.getAll('users');
+    const currentUser = auth.getUser();
+
+    if (users.length === 0) {
+      container.innerHTML = '<p class="text-xs text-slate-400 text-center py-2">No hay usuarios registrados.</p>';
+      return;
+    }
+
+    container.innerHTML = users.map(u => {
+      const isSelf = currentUser && currentUser.username === u.username;
+      const statusBadge = u.status === 'ACTIVE' 
+        ? '<span class="px-2 py-0.5 bg-emerald-50 text-emerald-600 font-bold rounded text-[9px] border border-emerald-200">Activo</span>'
+        : '<span class="px-2 py-0.5 bg-red-50 text-red-600 font-bold rounded text-[9px] border border-red-200">Bloqueado</span>';
+
+      return `
+        <div class="pt-2 flex justify-between items-center text-xs">
+          <div>
+            <span class="font-bold text-slate-800">${u.fullName}</span> 
+            <span class="text-[10px] text-slate-400">(@${u.username})</span>
+            <div class="text-[10px] text-slate-500">Rol: <strong>${u.role}</strong> | ${statusBadge}</div>
+          </div>
+          <div class="flex gap-1">
+            <button onclick="app.editUser('${u.username}')" class="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold border border-blue-200">✏️ Editar</button>
+            <button onclick="app.toggleUserStatus('${u.username}')" ${isSelf ? 'disabled' : ''} 
+              class="px-2 py-1 ${u.status === 'ACTIVE' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'} disabled:opacity-40 disabled:cursor-not-allowed rounded-lg text-[10px] font-bold border">
+              ${u.status === 'ACTIVE' ? '🚫 Bloquear' : '✅ Activar'}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async saveUser(e) {
+    e.preventDefault();
+    if (!auth.isAdmin()) return;
+
+    const fullName = document.getElementById('usr-fullname').value.trim();
+    const username = document.getElementById('usr-username').value.toLowerCase().trim();
+    const pin = document.getElementById('usr-pin').value.trim();
+    const role = document.getElementById('usr-role').value;
+    const isEdit = document.getElementById('usr-is-edit').value === 'true';
+
+    if (!fullName || !username || !pin) {
+      this.showToast('Complete todos los campos del usuario.');
+      return;
+    }
+
+    const existingUser = await db.get('users', username);
+    if (!isEdit && existingUser) {
+      this.showToast(`El usuario "${username}" ya existe.`);
+      return;
+    }
+
+    const userObj = {
+      username,
+      fullName,
+      pin,
+      role,
+      status: existingUser ? existingUser.status : 'ACTIVE',
+      createdAt: existingUser ? existingUser.createdAt : new Date().toISOString()
+    };
+
+    await db.put('users', userObj);
+    this.showToast(`Usuario "${username}" guardado correctamente.`, 'success');
+    this.resetUserForm();
+    this.loadUsersList();
+  }
+
+  async editUser(username) {
+    const u = await db.get('users', username);
+    if (!u) return;
+
+    document.getElementById('usr-fullname').value = u.fullName;
+    document.getElementById('usr-username').value = u.username;
+    document.getElementById('usr-username').readOnly = true;
+    document.getElementById('usr-pin').value = u.pin;
+    document.getElementById('usr-role').value = u.role;
+    document.getElementById('usr-is-edit').value = 'true';
+    document.getElementById('usr-form-title').textContent = `Editar Usuario: ${u.username}`;
+  }
+
+  async toggleUserStatus(username) {
+    const currentUser = auth.getUser();
+    if (currentUser && currentUser.username === username) {
+      this.showToast('Restricción: No puede bloquear su propio usuario activo.');
+      return;
+    }
+
+    const u = await db.get('users', username);
+    if (!u) return;
+
+    u.status = u.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+    await db.put('users', u);
+    this.showToast(`Estado de "${u.username}" cambiado a ${u.status}`, 'success');
+    this.loadUsersList();
+  }
+
+  resetUserForm() {
+    document.getElementById('form-user-manage').reset();
+    document.getElementById('usr-username').readOnly = false;
+    document.getElementById('usr-is-edit').value = 'false';
+    document.getElementById('usr-form-title').textContent = 'Crear Nuevo Usuario';
+  }
+
+  // --- MÉTODOS EXISTENTES Y AUXILIARES ---
   async loadBrandSettings() {
     const saved = await db.get('settings', 'brand');
     this.companyName = saved && saved.value ? saved.value : '';
@@ -60,23 +391,13 @@ class App {
     this.companyName = val;
     await db.put('settings', { key: 'brand', value: val });
     this.loadBrandSettings();
-    alert('¡Nombre de paquetería guardado correctamente!');
+    this.showToast('¡Nombre de paquetería guardado!', 'success');
   }
 
-  // --- CATALOGACIÓN DINÁMICA ---
   async loadCatalogSettings() {
     const saved = await db.get('settings', 'catalog');
-    if (saved && saved.value) {
-      this.catalog = saved.value;
-    }
+    if (saved && saved.value) this.catalog = saved.value;
     this.populateReceptionSelects();
-    this.renderCatalogAdminLists();
-  }
-
-  async saveCatalogSettings() {
-    await db.put('settings', { key: 'catalog', value: this.catalog });
-    this.populateReceptionSelects();
-    this.renderCatalogAdminLists();
   }
 
   populateReceptionSelects() {
@@ -98,48 +419,19 @@ class App {
     }
   }
 
-  renderCatalogAdminLists() {
-    ['categories', 'sizes', 'colors'].forEach(type => {
-      const container = document.getElementById(`list-opts-${type}`);
-      if (container) {
-        container.innerHTML = this.catalog[type].map(opt => `
-          <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold border">
-            ${opt}
-            <button onclick="app.removeCatalogOption('${type}', '${opt}')" class="text-red-500 font-bold ml-1">&times;</button>
-          </span>
-        `).join('');
-      }
-    });
-  }
-
-  async addCatalogOption(type, inputId) {
-    const input = document.getElementById(inputId);
-    const val = input.value.trim().toUpperCase();
-    if (!val) return;
-    if (!this.catalog[type].includes(val)) {
-      this.catalog[type].push(val);
-      await this.saveCatalogSettings();
-    }
-    input.value = '';
-  }
-
-  async removeCatalogOption(type, value) {
-    this.catalog[type] = this.catalog[type].filter(item => item !== value);
-    await this.saveCatalogSettings();
-  }
-
-  // --- RESGUARDO Y RESTAURACIÓN DE DATOS (BACKUP / RESTORE JSON) ---
   async exportBackup() {
     const packages = await db.getAll('packages');
     const settings = await db.getAll('settings');
     const syncQueue = await db.getAll('syncQueue');
+    const users = await db.getAll('users');
 
     const backupData = {
-      version: 1,
+      version: 2,
       timestamp: new Date().toISOString(),
       packages,
       settings,
-      syncQueue
+      syncQueue,
+      users
     };
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
@@ -159,32 +451,27 @@ class App {
     reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        if (data.packages && Array.isArray(data.packages)) {
-          for (const pkg of data.packages) {
-            await db.put('packages', pkg);
-          }
+        if (data.packages) {
+          for (const pkg of data.packages) await db.put('packages', pkg);
         }
-        if (data.settings && Array.isArray(data.settings)) {
-          for (const st of data.settings) {
-            await db.put('settings', st);
-          }
+        if (data.settings) {
+          for (const st of data.settings) await db.put('settings', st);
         }
-        alert('¡Restauración completada con éxito!');
-        location.reload();
+        if (data.users) {
+          for (const us of data.users) await db.put('users', us);
+        }
+        this.showToast('¡Restauración completada con éxito!', 'success');
+        setTimeout(() => location.reload(), 1000);
       } catch (err) {
-        alert('Error al leer el archivo JSON de respaldo.');
-        console.error(err);
+        this.showToast('Error al leer el archivo JSON de respaldo.');
       }
     };
     reader.readAsText(file);
   }
 
-  // --- TARIFAS ---
   async loadTariffSettings() {
     const saved = await db.get('settings', 'tariffs');
-    if (saved && saved.value) {
-      this.tariffs = saved.value;
-    }
+    if (saved && saved.value) this.tariffs = saved.value;
     document.getElementById('cfg-rate-base').value = this.tariffs.baseRate;
     document.getElementById('cfg-grace-days').value = this.tariffs.graceDays;
     document.getElementById('cfg-rate-penalty').value = this.tariffs.dailyPenalty;
@@ -198,17 +485,19 @@ class App {
       dailyPenalty: parseFloat(document.getElementById('cfg-rate-penalty').value) || 0
     };
     await db.put('settings', { key: 'tariffs', value: this.tariffs });
-    alert('¡Parámetros tarifarios guardados correctamente!');
+    this.showToast('¡Tarifas guardadas correctamente!', 'success');
   }
 
   initNetwork() {
     const updateNet = () => {
       const online = navigator.onLine;
       const el = document.getElementById('net-status');
-      el.textContent = online ? 'ONLINE' : 'OFFLINE';
-      el.className = online 
-        ? 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-        : 'px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30';
+      if (el) {
+        el.textContent = online ? 'ONLINE' : 'OFFLINE';
+        el.className = online 
+          ? 'px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+          : 'px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30';
+      }
       if (online) syncEngine.processQueue();
     };
     window.addEventListener('online', updateNet);
@@ -216,38 +505,16 @@ class App {
     updateNet();
   }
 
-  showSec(secId) {
-    ['sec-dashboard', 'sec-reception', 'sec-print-notify', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add('hidden');
-    });
-    
-    const targetSec = document.getElementById(secId);
-    if (targetSec) targetSec.classList.remove('hidden');
-
-    if (secId === 'sec-reception') {
-      this.renderShelfButtons();
-    } else if (secId === 'sec-manage') {
-      this.loadManageList();
-    } else if (secId === 'sec-print-notify') {
-      this.loadPrintNotifyView();
-    }
-  }
-
-  // --- SELECTOR DE UBICACIÓN ---
   renderShelfButtons() {
     const shelfContainer = document.getElementById('shelf-buttons');
     if (!shelfContainer) return;
-
     shelfContainer.innerHTML = '';
     for (let i = 1; i <= 10; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
       const shelfId = `E${i}`;
       btn.className = `shelf-btn p-1.5 text-xs font-bold rounded-lg border transition ${
-        this.selectedShelf === shelfId 
-          ? 'bg-blue-600 text-white border-blue-600 shadow-sm' 
-          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        this.selectedShelf === shelfId ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
       }`;
       btn.textContent = shelfId;
       btn.onclick = () => this.selectShelf(shelfId);
@@ -260,27 +527,21 @@ class App {
     this.selectedRow = null;
     this.renderShelfButtons();
     this.renderRowButtons();
-    
     const rowsContainer = document.getElementById('rows-container');
-    if (rowsContainer) {
-      rowsContainer.classList.remove('hidden');
-    }
+    if (rowsContainer) rowsContainer.classList.remove('hidden');
     this.updateLocationInput();
   }
 
   renderRowButtons() {
     const rowContainer = document.getElementById('row-buttons');
     if (!rowContainer) return;
-
     rowContainer.innerHTML = '';
     for (let i = 1; i <= 5; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
       const rowId = `F${i}`;
       btn.className = `row-btn p-1.5 text-xs font-bold rounded-lg border transition ${
-        this.selectedRow === rowId 
-          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' 
-          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        this.selectedRow === rowId ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
       }`;
       btn.textContent = rowId;
       btn.onclick = () => this.selectRow(rowId);
@@ -297,7 +558,6 @@ class App {
   updateLocationInput() {
     const input = document.getElementById('rec-ubicacion');
     if (!input) return;
-
     if (this.selectedShelf && this.selectedRow) {
       input.value = `${this.selectedShelf}-${this.selectedRow}`;
     } else if (this.selectedShelf) {
@@ -307,7 +567,6 @@ class App {
     }
   }
 
-  // --- AUTOCOMPLETADO DE CLIENTE Y TELÉFONO ---
   async handleClientAutocomplete(value) {
     const listEl = document.getElementById('client-suggestions');
     if (!value || value.trim().length < 2) { 
@@ -340,88 +599,11 @@ class App {
 
   selectClientSuggestion(clientName, phone) {
     document.getElementById('rec-cliente').value = clientName;
-    if (phone) {
-      document.getElementById('rec-celular').value = phone;
-    }
+    if (phone) document.getElementById('rec-celular').value = phone;
     const listEl = document.getElementById('client-suggestions');
     if (listEl) listEl.classList.add('hidden');
   }
 
-  // --- RECEPCIÓN ---
-  async savePackage(e) {
-    e.preventDefault();
-    const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
-    
-    // Validaciones
-    const codeFormatRegex = /^[A-Za-z].{3}[0-9]$/;
-    if (pkgCode.length !== 5 || !codeFormatRegex.test(pkgCode)) {
-      alert('El código debe tener exactamente 5 caracteres (Ej: P0001).');
-      return;
-    }
-
-    const packages = await db.getAll('packages');
-    if (packages.some(p => (p.code || '').toUpperCase() === pkgCode)) {
-      alert(`El código "${pkgCode}" ya existe. Ingrese uno diferente.`);
-      return;
-    }
-
-    const clientName = document.getElementById('rec-cliente').value.trim();
-    const phoneClient = document.getElementById('rec-celular').value.trim();
-    const phoneRecipient = document.getElementById('rec-celular-dest').value.trim();
-    const locationVal = document.getElementById('rec-ubicacion').value;
-    const keepClient = document.getElementById('chk-keep-client').checked;
-
-    if (!locationVal || locationVal.includes('?')) {
-      alert('Complete la selección de Estante y Fila.');
-      return;
-    }
-
-    const pkgId = 'PKG-' + Date.now();
-    const pkg = {
-      packageId: pkgId,
-      code: pkgCode,
-      qrCode: `PT:${pkgCode}`,
-      client: clientName,
-      phone: phoneClient,
-      recipientPhone: phoneRecipient,
-      category: document.getElementById('rec-categoria').value || 'OTROS',
-      size: document.getElementById('rec-tamano').value || 'PEQUEÑO',
-      color: document.getElementById('rec-color').value || 'NEGRO',
-      location: locationVal,
-      status: 'PENDIENTE',
-      createdAt: new Date().toISOString(),
-      amountCharged: 0
-    };
-
-    this.lastCreatedPackage = pkg;
-
-    await db.put('packages', pkg);
-    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
-
-    alert(`✅ Paquete ${pkg.code} registrado con éxito.`);
-
-    if (keepClient) {
-      document.getElementById('rec-codigo').value = '';
-      document.getElementById('rec-celular-dest').value = '';
-      document.getElementById('rec-ubicacion').value = '';
-      document.getElementById('rec-categoria').selectedIndex = 0;
-      document.getElementById('rec-tamano').selectedIndex = 0;
-      document.getElementById('rec-color').selectedIndex = 0;
-    } else {
-      document.getElementById('form-reception').reset();
-    }
-
-    this.selectedShelf = null;
-    this.selectedRow = null;
-    this.renderShelfButtons();
-    const rowsContainer = document.getElementById('rows-container');
-    if (rowsContainer) rowsContainer.classList.add('hidden');
-
-    this.loadDashboard();
-    syncEngine.processQueue();
-  }
-
-  // --- MÓDULO DE NOTIFICACIONES ---
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
@@ -473,66 +655,34 @@ class App {
     const hasClientPhone = !!pkg.phone;
     const hasRecipientPhone = !!pkg.recipientPhone;
 
-    // Normalización de Código (Sin el prefijo #) y Ficha Informativa
     printCard.innerHTML = `
       <div class="text-xl font-black text-slate-800 font-mono">${pkg.code}</div>
       <div class="flex justify-center py-1">${qrImg}</div>
-      
-      <!-- Ficha Informativa Adjunta al QR -->
       <div class="bg-slate-50 p-2.5 rounded-lg border text-left text-xs space-y-1 my-2">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category} | <strong>Tamaño:</strong> ${pkg.size} | <strong>Color:</strong> ${pkg.color}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
-
       <div class="space-y-1.5 pt-1">
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
-          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-          Enviar WhatsApp Cliente
+          🟢 Enviar WhatsApp Cliente
         </button>
-
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
           class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-2 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
-          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-          Enviar WhatsApp Destinatario
+          🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;
   }
 
-  sendWhatsAppNotification(pkg, type) {
-    const phone = type === 'client' ? pkg.phone : pkg.recipientPhone;
-    if (!phone) return;
-
-    const cleanPhone = phone.replace(/\D/g, '');
-    const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
-
-    const message = 
-`--------------------------------------------------
-📦 Paqueteria: ${company}
---------------------------------------------------
-*Código:* ${pkg.code}
-*Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
-*Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
-*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
---------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
-📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;
-
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  }
-
-  // --- GESTIÓN (EDITAR / ELIMINAR) ---
   async loadManageList() {
     const listEl = document.getElementById('manage-list');
     if (!listEl) return;
 
     const query = (document.getElementById('manage-search')?.value || '').toLowerCase();
     const packages = await db.getAll('packages');
-
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const filtered = packages.filter(p => 
@@ -588,14 +738,15 @@ class App {
     const pkg = await db.get('packages', pkgId);
     if (!pkg) return;
 
-    pkg.client = document.getElementById('edit-client').value.trim();
-    pkg.phone = document.getElementById('edit-phone').value.trim();
-    pkg.recipientPhone = document.getElementById('edit-recipient-phone').value.trim();
+    pkg.client = document.getElementById('edit-client').value.toUpperCase().trim();
+    pkg.phone = document.getElementById('edit-phone').value.replace(/\D/g, '');
+    pkg.recipientPhone = document.getElementById('edit-recipient-phone').value.replace(/\D/g, '');
     pkg.location = document.getElementById('edit-location').value.trim();
     pkg.status = document.getElementById('edit-status').value;
     pkg.category = document.getElementById('edit-category').value.trim();
     pkg.size = document.getElementById('edit-size').value.trim();
     pkg.color = document.getElementById('edit-color').value.trim();
+    pkg.updatedAt = new Date().toISOString();
 
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
@@ -607,8 +758,7 @@ class App {
   }
 
   async deletePackage(packageId) {
-    if (!confirm('¿Está seguro de eliminar este registro permanente de la base de datos?')) return;
-
+    if (!confirm('¿Está seguro de eliminar este registro permanente?')) return;
     const pkg = await db.get('packages', packageId);
     if (!pkg) return;
 
@@ -620,10 +770,9 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- INVENTARIO / UBICACIONES ---
   setFixedLocationManual() {
     const val = document.getElementById('inv-loc-input').value.trim();
-    if (!val) { alert('Ingrese una ubicación válida'); return; }
+    if (!val) { this.showToast('Ingrese una ubicación válida'); return; }
     document.getElementById('inv-fixed-loc').textContent = val;
     document.getElementById('btn-scan-pkg').disabled = false;
     document.getElementById('btn-add-inv-pkg').disabled = false;
@@ -633,38 +782,14 @@ class App {
   async processInventoryManual() {
     const code = document.getElementById('inv-pkg-input').value.trim();
     const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
-    if (!code) { alert('Ingrese un código de paquete'); return; }
+    if (!code) { this.showToast('Ingrese un código de paquete'); return; }
     await this.updatePackageLocation(code, fixedLoc);
     document.getElementById('inv-pkg-input').value = '';
   }
 
-  async updatePackageLocation(qrCode, newLocation) {
-    const packages = await db.getAll('packages');
-    const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
-
-    if (!pkg) {
-      alert('Paquete no encontrado');
-      return;
-    }
-
-    pkg.location = newLocation;
-    await db.put('packages', pkg);
-    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
-
-    const list = document.getElementById('inv-scanned-list');
-    const li = document.createElement('li');
-    li.className = 'py-1.5 flex justify-between font-mono';
-    li.innerHTML = `<span>Code: <strong>${pkg.code}</strong></span> <span class="text-emerald-600 font-bold">✔ OK</span>`;
-    list.prepend(li);
-
-    this.loadDashboard();
-    syncEngine.processQueue();
-  }
-
-  // --- ENTREGA ---
   async searchDeliveryManual() {
     const code = document.getElementById('del-search-code').value.trim();
-    if (!code) { alert('Ingrese un código de paquete'); return; }
+    if (!code) { this.showToast('Ingrese un código de paquete'); return; }
     await this.prepareDelivery(code);
   }
 
@@ -673,19 +798,17 @@ class App {
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
 
     if (!pkg || pkg.status === 'ENTREGADO') {
-      alert('Paquete no disponible para entrega.');
+      this.showToast('Paquete no disponible para entrega.');
       return;
     }
 
     this.selectedDeliveryPackage = pkg;
-    
     const createdDate = new Date(pkg.createdAt || Date.now());
     const now = new Date();
     const diffTime = Math.abs(now - createdDate);
     const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
 
     const { baseRate, graceDays, dailyPenalty } = this.tariffs;
-
     const montoBase = diffDays * baseRate;
     const diasRetraso = Math.max(0, diffDays - graceDays);
     const montoPenalizacion = diasRetraso * dailyPenalty;
@@ -727,7 +850,7 @@ class App {
     await db.put('packages', this.selectedDeliveryPackage);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'DELIVERY', payload: this.selectedDeliveryPackage });
 
-    alert(`¡Entrega confirmada! Cobro realizado: Bs. ${this.currentCalculatedAmount.toFixed(2)}`);
+    this.showToast(`¡Entrega confirmada! Cobro realizado: Bs. ${this.currentCalculatedAmount.toFixed(2)}`, 'success');
     document.getElementById('del-details').classList.add('hidden');
     document.getElementById('del-search-code').value = '';
     this.selectedDeliveryPackage = null;
@@ -735,7 +858,6 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- DASHBOARD / INVENTARIO ---
   async loadDashboard() {
     const packages = await db.getAll('packages');
     const todayStr = new Date().toISOString().split('T')[0];
@@ -770,7 +892,7 @@ class App {
 
     const listEl = document.getElementById('list-pending');
     if (filtered.length === 0) {
-      listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontraron paquetes con los filtros actuales.</p>';
+      listEl.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontraron paquetes.</p>';
       return;
     }
 

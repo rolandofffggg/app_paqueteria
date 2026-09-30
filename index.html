@@ -389,6 +389,18 @@
           <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl text-xs">Guardar Catálogo Global</button>
         </form>
       </div>
+
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Resguardo (Backup / Restore)</h3>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="app.exportBackup()" class="bg-emerald-600 text-white font-bold py-2 rounded-xl hover:bg-emerald-700 text-xs">📥 Exportar Backup</button>
+          <label class="bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 text-xs cursor-pointer text-center py-2">
+            📤 Restaurar
+            <input type="file" id="import-backup-file" accept=".json" onchange="app.importBackup(event)" class="hidden">
+          </label>
+        </div>
+      </div>
+      
     </section>
 
     <!-- Nuevo Módulo UI: Gestión de Usuarios (Solo ADMIN) -->

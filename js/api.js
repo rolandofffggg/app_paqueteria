@@ -1,7 +1,7 @@
 /**
  * Conector API con Google Apps Script / ParcelTrack_DB
  */
-const PARCELTRACK_API_URL = 'https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec';
+const PARCELTRACK_API_URL = 'https://script.google.com/macros/s/AKfycbyOZpnkHZUu13TURsRMx4cuwkpN5JqPzHE2Fc6bBe_yyAAwIV9pGQqmwWoN8220aqMGgA/exec';
 
 class ApiService {
   /**

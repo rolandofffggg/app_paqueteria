@@ -8,7 +8,7 @@ class AuthManager {
     if (storedUser) {
       try {
         const user = JSON.parse(storedUser);
-        const dbUser = await db.get('users', user.username);
+        const dbUser = await db.get('users', user.username.toLowerCase());
         if (dbUser && dbUser.status === 'ACTIVE') {
           this.currentUser = dbUser;
           this.applyRolePermissions();
@@ -30,13 +30,31 @@ class AuthManager {
       return { success: false, message: 'Ingrese usuario y clave/PIN.' };
     }
 
-    const user = await db.get('users', username);
-    if (!user) {
-      return { success: false, message: 'Usuario o clave incorrecta.' };
+    // 1. Buscar usuario en IndexedDB local
+    let user = await db.get('users', username);
+
+    // 2. Si no se encuentra en local, intentar sincronizar usuarios remotos de ParcelTrack_DB
+    if (!user && navigator.onLine) {
+      try {
+        const remoteUsers = await api.getRemoteUsers();
+        if (Array.isArray(remoteUsers)) {
+          for (const u of remoteUsers) {
+            await db.put('users', u);
+          }
+          user = await db.get('users', username);
+        }
+      } catch (err) {
+        console.warn('No se pudo verificar usuarios en línea:', err);
+      }
     }
 
-    if (user.pin !== pin) {
-      return { success: false, message: 'Usuario o clave incorrecta.' };
+    if (!user) {
+      return { success: false, message: 'Usuario no encontrado. Verifique el nombre.' };
+    }
+
+    // Convertir ambos a String para evitar errores de comparación entre números y texto
+    if (String(user.pin).trim() !== String(pin).trim()) {
+      return { success: false, message: 'Clave / PIN incorrecto.' };
     }
 
     if (user.status === 'BLOCKED') {
@@ -44,7 +62,11 @@ class AuthManager {
     }
 
     this.currentUser = user;
-    const sessionData = JSON.stringify({ username: user.username, role: user.role, fullName: user.fullName });
+    const sessionData = JSON.stringify({ 
+      username: user.username, 
+      role: user.role, 
+      fullName: user.fullName 
+    });
     
     if (remember) {
       localStorage.setItem('pt_user', sessionData);
@@ -60,8 +82,13 @@ class AuthManager {
     this.currentUser = null;
     sessionStorage.removeItem('pt_user');
     localStorage.removeItem('pt_user');
-    const loginView = document.getElementById('view-login');
-    if (loginView) loginView.classList.remove('hidden');
+    
+    // Ocultar vistas principales y mostrar el login
+    const viewLogin = document.getElementById('view-login');
+    if (viewLogin) viewLogin.classList.remove('hidden');
+
+    const userLabel = document.getElementById('session-user-label');
+    if (userLabel) userLabel.textContent = 'Sin Sesión';
   }
 
   getUser() {
@@ -69,7 +96,7 @@ class AuthManager {
   }
 
   isAdmin() {
-    return this.currentUser && this.currentUser.role === 'ADMIN';
+    return this.currentUser && (this.currentUser.role === 'ADMIN' || this.currentUser.role === 'ADM');
   }
 
   hasAccess(tabId) {
@@ -83,17 +110,18 @@ class AuthManager {
 
   getUserShortLabel() {
     if (!this.currentUser) return '';
-    const roleShort = this.currentUser.role === 'ADMIN' ? 'Adm.' : 'Ope.';
+    const isAdminRole = this.isAdmin();
+    const roleShort = isAdminRole ? 'Adm.' : 'Ope.';
     const firstName = (this.currentUser.fullName || this.currentUser.username).split(' ')[0];
     return `${roleShort} ${firstName}`;
   }
 
   applyRolePermissions() {
     const adminNavButtons = document.querySelectorAll('.nav-admin-only');
-    const isAdmin = this.isAdmin();
+    const isAdminRole = this.isAdmin();
 
     adminNavButtons.forEach(btn => {
-      if (isAdmin) {
+      if (isAdminRole) {
         btn.classList.remove('hidden');
       } else {
         btn.classList.add('hidden');
@@ -107,4 +135,4 @@ class AuthManager {
   }
 }
 
-const auth = new AuthManager();
+const auth = new AuthManager();uthManager();

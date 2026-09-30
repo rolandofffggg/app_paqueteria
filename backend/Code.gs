@@ -1,17 +1,17 @@
 /**
- * Servidor Backend en Google Apps Script para Sistema de Paquetería Offline-First.
- * Maneja la sincronización multiusuario y la auditoría de registros.
+ * Backend en Google Apps Script para ParcelTrack_DB.
+ * Permite la sincronización de registros entre múltiples usuarios en tiempo real.
  */
 
-// Nombre de la hoja en Google Sheets donde se almacenan los paquetes
-const SHEET_NAME = 'PAQUETES';
+// Nombre de la base de datos / hoja
+const DB_SHEET_NAME = 'PAQUETES';
 
 /**
- * Función que responde a las peticiones GET (Descarga de paquetes/sincronización remota).
+ * Endpoint GET: Descarga los registros centralizados para sincronización remota.
  */
 function doGet(e) {
   try {
-    const sheet = getOrCreateSheet();
+    const sheet = getDatabaseSheet();
     const data = sheet.getDataRange().getValues();
     
     if (data.length <= 1) {
@@ -21,7 +21,7 @@ function doGet(e) {
     const headers = data[0];
     const rows = data.slice(1);
 
-    const packages = rows.map(row => {
+    const records = rows.map(row => {
       let pkg = {};
       headers.forEach((header, index) => {
         pkg[header] = row[index];
@@ -29,48 +29,48 @@ function doGet(e) {
       return pkg;
     });
 
-    return responseJSON(packages);
+    return responseJSON(records);
   } catch (error) {
     return responseJSON({ status: 'error', message: error.toString() });
   }
 }
 
 /**
- * Función que responde a las peticiones POST (Creación, actualización, entrega y eliminación de paquetes).
+ * Endpoint POST: Procesa creaciones, ediciones, entregas y eliminaciones de cada usuario.
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
-  // Evita colisiones cuando múltiples usuarios sincronizan al mismo tiempo
+  // Bloqueo temporal para evitar conflictos entre solicitudes concurrentes de distintos usuarios
   lock.tryLock(10000);
 
   try {
     if (!e.postData || !e.postData.contents) {
-      return responseJSON({ status: 'error', message: 'No se recibieron datos en la petición.' });
+      return responseJSON({ status: 'error', message: 'No se recibieron datos de sincronización.' });
     }
 
-    const item = JSON.parse(e.postData.contents);
-    const sheet = getOrCreateSheet();
-    const type = item.type;
-    const payload = item.payload;
+    const syncItem = JSON.parse(e.postData.contents);
+    const sheet = getDatabaseSheet();
+    const actionType = syncItem.type;
+    const payload = syncItem.payload;
 
     if (!payload || !payload.packageId) {
-      return responseJSON({ status: 'error', message: 'Payload o packageId no válido.' });
+      return responseJSON({ status: 'error', message: 'Identificador de registro no válido.' });
     }
 
     let result;
-    switch (type) {
+    switch (actionType) {
       case 'CREATE':
-        result = createPackageRow(sheet, payload);
+        result = saveOrUpdateRecord(sheet, payload);
         break;
       case 'UPDATE':
       case 'DELIVERY':
-        result = updatePackageRow(sheet, payload);
+        result = saveOrUpdateRecord(sheet, payload);
         break;
       case 'DELETE':
-        result = deletePackageRow(sheet, payload.packageId);
+        result = deleteRecord(sheet, payload.packageId);
         break;
       default:
-        result = { status: 'error', message: 'Tipo de acción no soportada: ' + type };
+        result = { status: 'error', message: 'Acción no reconocida: ' + actionType };
     }
 
     return responseJSON(result);
@@ -83,93 +83,77 @@ function doPost(e) {
 }
 
 /**
- * Crea un nuevo registro en la hoja de cálculo.
+ * Guarda o actualiza un registro basándose en su ID único en ParcelTrack_DB.
  */
-function createPackageRow(sheet, pkg) {
-  const headers = getHeaders();
-  const existingRowIndex = findRowIndexByPackageId(sheet, pkg.packageId);
+function saveOrUpdateRecord(sheet, record) {
+  const headers = getDatabaseHeaders();
+  const rowIndex = findRowIndexById(sheet, record.packageId);
 
-  // Si ya existe la fila por una sincronización previa, se actualiza
-  if (existingRowIndex > -1) {
-    return updatePackageRow(sheet, pkg);
+  const rowData = headers.map(header => record[header] !== undefined ? record[header] : '');
+
+  if (rowIndex > -1) {
+    // Si ya existe en la hoja, sobreescribe la fila con los datos más recientes
+    sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
+    return { status: 'success', action: 'UPDATE', packageId: record.packageId };
+  } else {
+    // Si es nuevo, lo agrega al final
+    sheet.appendRow(rowData);
+    return { status: 'success', action: 'CREATE', packageId: record.packageId };
   }
-
-  const row = headers.map(header => pkg[header] !== undefined ? pkg[header] : '');
-  sheet.appendRow(row);
-
-  return { status: 'success', action: 'CREATE', packageId: pkg.packageId };
 }
 
 /**
- * Actualiza una fila existente basándose en el packageId.
+ * Elimina la fila correspondiente a un packageId.
  */
-function updatePackageRow(sheet, pkg) {
-  const headers = getHeaders();
-  const rowIndex = findRowIndexByPackageId(sheet, pkg.packageId);
-
-  if (rowIndex === -1) {
-    // Si no existe localmente en el Sheets, lo crea
-    return createPackageRow(sheet, pkg);
-  }
-
-  const rowData = headers.map(header => pkg[header] !== undefined ? pkg[header] : '');
-  sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
-
-  return { status: 'success', action: 'UPDATE', packageId: pkg.packageId };
-}
-
-/**
- * Elimina la fila de un paquete por su packageId.
- */
-function deletePackageRow(sheet, packageId) {
-  const rowIndex = findRowIndexByPackageId(sheet, packageId);
+function deleteRecord(sheet, packageId) {
+  const rowIndex = findRowIndexById(sheet, packageId);
 
   if (rowIndex !== -1) {
     sheet.deleteRow(rowIndex);
     return { status: 'success', action: 'DELETE', packageId: packageId };
   }
 
-  return { status: 'warning', message: 'Paquete no encontrado para eliminar.', packageId: packageId };
+  return { status: 'warning', message: 'Registro no encontrado en ParcelTrack_DB.', packageId: packageId };
 }
 
 /**
- * Busca el índice de la fila según el packageId (1-based index).
+ * Busca la fila exacta del paquete en la hoja de cálculo.
  */
-function findRowIndexByPackageId(sheet, packageId) {
+function findRowIndexById(sheet, packageId) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return -1;
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === packageId) {
-      return i + 1; // +1 porque las filas en Sheets comienzan en 1
+      return i + 1; // Ajuste por índice de fila en Sheets (empieza en 1)
     }
   }
   return -1;
 }
 
 /**
- * Obtiene o crea la hoja de trabajo con la cabecera completa de auditoría.
+ * Inicializa y obtiene la pestaña PAQUETES en el libro ParcelTrack_DB.
  */
-function getOrCreateSheet() {
+function getDatabaseSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(SHEET_NAME);
+  let sheet = ss.getSheetByName(DB_SHEET_NAME);
 
   if (!sheet) {
-    sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(getHeaders());
-    sheet.getRange(1, 1, 1, getHeaders().length).setFontWeight('bold');
+    sheet = ss.insertSheet(DB_SHEET_NAME);
+    sheet.appendRow(getDatabaseHeaders());
+    sheet.getRange(1, 1, 1, getDatabaseHeaders().length).setFontWeight('bold');
   } else if (sheet.getLastRow() === 0) {
-    sheet.appendRow(getHeaders());
-    sheet.getRange(1, 1, 1, getHeaders().length).setFontWeight('bold');
+    sheet.appendRow(getDatabaseHeaders());
+    sheet.getRange(1, 1, 1, getDatabaseHeaders().length).setFontWeight('bold');
   }
 
   return sheet;
 }
 
 /**
- * Estructura de cabeceras compatible con la aplicación PWA y trazabilidad multiusuario.
+ * Esquema de columnas de ParcelTrack_DB para auditar las acciones por usuario.
  */
-function getHeaders() {
+function getDatabaseHeaders() {
   return [
     'packageId',
     'code',
@@ -194,7 +178,7 @@ function getHeaders() {
 }
 
 /**
- * Formatea la respuesta HTTP en estructura JSON con soporte de CORS.
+ * Formateador de respuesta JSON con soporte para CORS.
  */
 function responseJSON(data) {
   return ContentService.createTextOutput(JSON.stringify(data))

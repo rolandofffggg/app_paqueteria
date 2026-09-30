@@ -470,7 +470,7 @@ async toggleUserStatus(username) {
   }
 
   // --- CONFIGURACIONES Y PARÁMETROS ---
-  async loadBrandSettings() {
+async loadBrandSettings() {
     const saved = await db.get('settings', 'brand');
     this.companyName = saved && saved.value ? saved.value : '';
     const headerTitle = document.getElementById('header-app-title');
@@ -481,21 +481,54 @@ async toggleUserStatus(username) {
     if (inputComp) inputComp.value = this.companyName;
   }
 
-  async saveBrandSettings(e) {
+async saveBrandSettings(e) {
     e.preventDefault();
     const val = document.getElementById('cfg-company-name').value.trim();
     this.companyName = val;
+
     await db.put('settings', { key: 'brand', value: val });
+    await db.put('syncQueue', { id: 'SYNC-SET-' + Date.now(), type: 'SYNC_SETTING', payload: { key: 'brand', value: val } });
+
     this.loadBrandSettings();
-    this.showToast('¡Nombre de paquetería guardado!', 'success');
+    this.showToast('¡Nombre de marca guardado y sincronizado!', 'success');
+    syncEngine.processQueue();
   }
 
-  async loadCatalogSettings() {
+async loadCatalogSettings() {
     const saved = await db.get('settings', 'catalog');
     if (saved && saved.value) this.catalog = saved.value;
+
+    const catEl = document.getElementById('cfg-catalog-categories');
+    const sizeEl = document.getElementById('cfg-catalog-sizes');
+    const colEl = document.getElementById('cfg-catalog-colors');
+
+    if (catEl) catEl.value = this.catalog.categories ? this.catalog.categories.join(', ') : '';
+    if (sizeEl) sizeEl.value = this.catalog.sizes ? this.catalog.sizes.join(', ') : '';
+    if (colEl) colEl.value = this.catalog.colors ? this.catalog.colors.join(', ') : '';
+
     this.populateReceptionSelects();
   }
 
+  async saveCatalogSettings(e) {
+    e.preventDefault();
+    const rawCat = document.getElementById('cfg-catalog-categories').value;
+    const rawSize = document.getElementById('cfg-catalog-sizes').value;
+    const rawCol = document.getElementById('cfg-catalog-colors').value;
+
+    this.catalog = {
+      categories: rawCat.split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
+      sizes: rawSize.split(',').map(s => s.trim().toUpperCase()).filter(Boolean),
+      colors: rawCol.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+    };
+
+    await db.put('settings', { key: 'catalog', value: this.catalog });
+    await db.put('syncQueue', { id: 'SYNC-SET-' + Date.now(), type: 'SYNC_SETTING', payload: { key: 'catalog', value: this.catalog } });
+
+    this.populateReceptionSelects();
+    this.showToast('¡Catálogo guardado y sincronizado!', 'success');
+    syncEngine.processQueue();
+  }
+  
   populateReceptionSelects() {
     const catSel = document.getElementById('rec-categoria');
     const sizeSel = document.getElementById('rec-tamano');
@@ -551,23 +584,32 @@ async toggleUserStatus(username) {
     reader.readAsText(file);
   }
 
-  async loadTariffSettings() {
+async loadTariffSettings() {
     const saved = await db.get('settings', 'tariffs');
     if (saved && saved.value) this.tariffs = saved.value;
-    document.getElementById('cfg-rate-base').value = this.tariffs.baseRate;
-    document.getElementById('cfg-grace-days').value = this.tariffs.graceDays;
-    document.getElementById('cfg-rate-penalty').value = this.tariffs.dailyPenalty;
+    
+    const baseEl = document.getElementById('cfg-rate-base');
+    const graceEl = document.getElementById('cfg-grace-days');
+    const penEl = document.getElementById('cfg-rate-penalty');
+
+    if (baseEl) baseEl.value = this.tariffs.baseRate;
+    if (graceEl) graceEl.value = this.tariffs.graceDays;
+    if (penEl) penEl.value = this.tariffs.dailyPenalty;
   }
 
-  async saveTariffSettings(e) {
+async saveTariffSettings(e) {
     e.preventDefault();
     this.tariffs = {
       baseRate: parseFloat(document.getElementById('cfg-rate-base').value) || 0,
       graceDays: parseInt(document.getElementById('cfg-grace-days').value) || 0,
       dailyPenalty: parseFloat(document.getElementById('cfg-rate-penalty').value) || 0
     };
+
     await db.put('settings', { key: 'tariffs', value: this.tariffs });
-    this.showToast('¡Tarifas guardadas correctamente!', 'success');
+    await db.put('syncQueue', { id: 'SYNC-SET-' + Date.now(), type: 'SYNC_SETTING', payload: { key: 'tariffs', value: this.tariffs } });
+
+    this.showToast('¡Tarifas guardadas y sincronizadas!', 'success');
+    syncEngine.processQueue();
   }
 
   initNetwork() {

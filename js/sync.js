@@ -1,6 +1,3 @@
-/**
- * Motor de Sincronización Offline-First para ParcelTrack_DB
- */
 class SyncEngine {
   constructor() {
     this.isSyncing = false;
@@ -11,7 +8,6 @@ class SyncEngine {
     this.isSyncing = true;
 
     try {
-      // 1. Enviar cambios locales pendientes hacia la nube
       const queue = await db.getAll('syncQueue');
       if (queue.length > 0) {
         for (const item of queue) {
@@ -20,19 +16,21 @@ class SyncEngine {
             await db.delete('syncQueue', item.id);
           } catch (err) {
             console.error('Error al enviar item de sincronización:', err);
-            break; // Si falla la red, interrumpe el ciclo hasta la próxima reconexión
+            break;
           }
         }
       }
 
-      // 2. Descargar cambios remotos desde ParcelTrack_DB
       await this.pullRemoteChanges();
     } catch (e) {
-      console.error('Error durante el proceso de sincronización:', e);
+      console.error('Error en sincronización:', e);
     } finally {
       this.isSyncing = false;
       if (typeof app !== 'undefined') {
         app.loadDashboard();
+        app.loadBrandSettings();
+        app.loadTariffSettings();
+        app.loadCatalogSettings();
         if (typeof auth !== 'undefined' && auth.isAdmin()) {
           app.loadUsersList();
         }
@@ -42,7 +40,7 @@ class SyncEngine {
 
   async pullRemoteChanges() {
     try {
-      // 1. Descargar paquetes y fusionar con IndexedDB
+      // 1. Paquetes
       const remoteData = await api.getRemotePackages();
       if (Array.isArray(remoteData)) {
         for (const remotePkg of remoteData) {
@@ -53,15 +51,23 @@ class SyncEngine {
         }
       }
 
-      // 2. Descargar usuarios y actualizar base de datos local
+      // 2. Usuarios
       const remoteUsers = await api.getRemoteUsers();
       if (Array.isArray(remoteUsers)) {
         for (const remoteUser of remoteUsers) {
           await db.put('users', remoteUser);
         }
       }
+
+      // 3. Ajustes Globales (Marca, Tarifas, Catálogo)
+      const remoteSettings = await api.getRemoteSettings();
+      if (remoteSettings && typeof remoteSettings === 'object') {
+        for (const [key, value] of Object.entries(remoteSettings)) {
+          await db.put('settings', { key, value });
+        }
+      }
     } catch (e) {
-      console.warn('No se pudieron descargar actualizaciones remotas:', e);
+      console.warn('Error bajando cambios remotos:', e);
     }
   }
 }

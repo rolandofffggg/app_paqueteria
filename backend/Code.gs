@@ -1,16 +1,17 @@
 /**
- * Servidor Backend en Google Apps Script para ParcelTrack_DB.
- * Maneja la sincronización multiusuario de Paquetes y Usuarios.
+ * Servidor Backend para ParcelTrack_BD
+ * Sincronización multiusuario de Paquetes, Usuarios y Configuración Global.
  */
 
 const DB_SHEET_NAME = 'PAQUETES';
 const DB_USERS_SHEET_NAME = 'USUARIOS';
+const DB_SETTINGS_SHEET_NAME = 'CONFIGURACION';
 
 function doGet(e) {
   try {
     const action = e.parameter.action;
 
-    // Si se solicita la lista de usuarios remotos
+    // 1. Obtener Usuarios
     if (action === 'getUsers') {
       const userSheet = getOrCreateUserSheet();
       const userData = userSheet.getDataRange().getValues();
@@ -24,7 +25,23 @@ function doGet(e) {
       return responseJSON(users);
     }
 
-    // Por defecto, retorna la lista de paquetes
+    // 2. Obtener Ajustes Globales
+    if (action === 'getSettings') {
+      const settingsSheet = getOrCreateSettingsSheet();
+      const data = settingsSheet.getDataRange().getValues();
+      if (data.length <= 1) return responseJSON([]);
+      const settings = {};
+      data.slice(1).forEach(row => {
+        try {
+          settings[row[0]] = JSON.parse(row[1]);
+        } catch (err) {
+          settings[row[0]] = row[1];
+        }
+      });
+      return responseJSON(settings);
+    }
+
+    // 3. Obtener Paquetes (Por Defecto)
     const sheet = getDatabaseSheet();
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return responseJSON([]);
@@ -55,6 +72,13 @@ function doPost(e) {
     const actionType = syncItem.type;
     const payload = syncItem.payload;
 
+    // --- MANEJO DE CONFIGURACIÓN GLOBAL ---
+    if (actionType === 'SYNC_SETTING') {
+      const settingsSheet = getOrCreateSettingsSheet();
+      const result = saveOrUpdateSetting(settingsSheet, payload.key, payload.value);
+      return responseJSON(result);
+    }
+
     // --- MANEJO DE USUARIOS ---
     if (actionType === 'SYNC_USER') {
       const userSheet = getOrCreateUserSheet();
@@ -64,7 +88,7 @@ function doPost(e) {
 
     // --- MANEJO DE PAQUETES ---
     if (!payload || !payload.packageId) {
-      return responseJSON({ status: 'error', message: 'Identificador de registro no válido.' });
+      return responseJSON({ status: 'error', message: 'Identificador no válido.' });
     }
 
     const sheet = getDatabaseSheet();
@@ -92,7 +116,41 @@ function doPost(e) {
   }
 }
 
-// --- FUNCIONES AUXILIARES PARA PAQUETES ---
+// --- AUXILIARES CONFIGURACIÓN ---
+function saveOrUpdateSetting(sheet, key, value) {
+  const data = sheet.getDataRange().getValues();
+  const jsonValue = JSON.stringify(value);
+  let rowIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === key) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (rowIndex > -1) {
+    sheet.getRange(rowIndex, 2).setValue(jsonValue);
+    sheet.getRange(rowIndex, 3).setValue(new Date().toISOString());
+    return { status: 'success', action: 'UPDATE_SETTING', key };
+  } else {
+    sheet.appendRow([key, jsonValue, new Date().toISOString()]);
+    return { status: 'success', action: 'CREATE_SETTING', key };
+  }
+}
+
+function getOrCreateSettingsSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(DB_SETTINGS_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() === 0) {
+    if (!sheet) sheet = ss.insertSheet(DB_SETTINGS_SHEET_NAME);
+    sheet.appendRow(['key', 'value', 'updatedAt']);
+    sheet.getRange(1, 1, 1, 3).setFontWeight('bold');
+  }
+  return sheet;
+}
+
+// --- AUXILIARES PAQUETES Y USUARIOS ---
 function saveOrUpdateRecord(sheet, record) {
   const headers = getDatabaseHeaders();
   const rowIndex = findRowIndexById(sheet, record.packageId);
@@ -111,9 +169,9 @@ function deleteRecord(sheet, packageId) {
   const rowIndex = findRowIndexById(sheet, packageId);
   if (rowIndex !== -1) {
     sheet.deleteRow(rowIndex);
-    return { status: 'success', action: 'DELETE', packageId: packageId };
+    return { status: 'success', action: 'DELETE', packageId };
   }
-  return { status: 'warning', message: 'Registro no encontrado.', packageId: packageId };
+  return { status: 'warning', message: 'Registro no encontrado.', packageId };
 }
 
 function findRowIndexById(sheet, packageId) {
@@ -145,7 +203,6 @@ function getDatabaseHeaders() {
   ];
 }
 
-// --- FUNCIONES AUXILIARES PARA USUARIOS ---
 function saveOrUpdateUser(sheet, user) {
   const headers = ['username', 'fullName', 'pin', 'role', 'status', 'createdAt'];
   const data = sheet.getDataRange().getValues();

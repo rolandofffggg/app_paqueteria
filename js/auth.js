@@ -81,6 +81,13 @@ class AuthManager {
     return true;
   }
 
+  getUserShortLabel() {
+    if (!this.currentUser) return '';
+    const roleShort = this.currentUser.role === 'ADMIN' ? 'Adm.' : 'Ope.';
+    const firstName = (this.currentUser.fullName || this.currentUser.username).split(' ')[0];
+    return `${roleShort} ${firstName}`;
+  }
+
   applyRolePermissions() {
     const adminNavButtons = document.querySelectorAll('.nav-admin-only');
     const isAdmin = this.isAdmin();
@@ -93,12 +100,9 @@ class AuthManager {
       }
     });
 
-    // Formato de abreviación para el encabezado: Adm. / Ope.
     const userLabel = document.getElementById('session-user-label');
     if (userLabel && this.currentUser) {
-      const roleAbbr = this.currentUser.role === 'ADMIN' ? 'Adm.' : 'Ope.';
-      userLabel.textContent = `${this.currentUser.fullName} (${roleAbbr})`;
-      userLabel.classList.remove('hidden');
+      userLabel.textContent = this.getUserShortLabel();
     }
   }
 }

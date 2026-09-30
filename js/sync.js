@@ -1,80 +1,64 @@
 class SyncEngine {
   constructor() {
     this.isSyncing = false;
-    this.autoSyncInterval = null;
   }
 
   async processQueue() {
     if (this.isSyncing || !navigator.onLine) return;
     this.isSyncing = true;
 
-    const syncStatusEl = document.getElementById('sync-status');
-    
     try {
-      // 1. PUSH: Enviar cola local pendiente
       const queue = await db.getAll('syncQueue');
       if (queue.length > 0) {
-        if (syncStatusEl) {
-          syncStatusEl.textContent = `Enviando (${queue.length})...`;
-          syncStatusEl.classList.remove('hidden');
-        }
-
-        const success = await api.sendBatch(queue);
-        if (success) {
-          for (const item of queue) {
+        for (const item of queue) {
+          try {
+            await api.syncItem(item);
             await db.delete('syncQueue', item.id);
+          } catch (err) {
+            console.error('Error al sincronizar elemento individual:', err);
           }
         }
       }
 
-      // 2. PULL: Descargar registros actualizados de la nube
-      if (syncStatusEl) {
-        syncStatusEl.textContent = `Actualizando...`;
-        syncStatusEl.classList.remove('hidden');
-      }
-
-      const remotePackages = await api.fetchPackages();
-      if (remotePackages && Array.isArray(remotePackages)) {
-        const remainingQueue = await db.getAll('syncQueue');
-        
-        for (const remotePkg of remotePackages) {
-          // Si el paquete no tiene operaciones locales pendientes en cola, actualizar IndexedDB
-          const inQueue = remainingQueue.some(q => q.payload && q.payload.packageId === remotePkg.packageId);
-          if (!inQueue) {
-            await db.put('packages', remotePkg);
-          }
-        }
-      }
+      // Sincronización bidireccional de datos remotos (Paquetes y Usuarios)
+      await this.pullRemoteData();
     } catch (e) {
-      console.error('Error durante la sincronización:', e);
+      console.error('Error general durante la sincronización:', e);
     } finally {
-      if (syncStatusEl) {
-        syncStatusEl.classList.add('hidden');
-      }
       this.isSyncing = false;
-
-      // Refrescar vistas en pantalla si existen
-      if (window.app) {
+      if (typeof app !== 'undefined' && app.loadDashboard) {
         app.loadDashboard();
-        app.loadManageList();
       }
     }
   }
 
-  // Sincronización periódica automática (Cada 30 segundos si hay conexión)
-  startAutoSync(intervalMs = 30000) {
-    if (this.autoSyncInterval) clearInterval(this.autoSyncInterval);
-    this.autoSyncInterval = setInterval(() => {
-      if (navigator.onLine) {
-        this.processQueue();
+  async pullRemoteData() {
+    try {
+      const remoteData = await api.fetchLatestData();
+      
+      // 1. Sincronizar Paquetes Remotos
+      if (remoteData && remoteData.packages) {
+        for (const remotePkg of remoteData.packages) {
+          const localPkg = await db.get('packages', remotePkg.packageId);
+          if (!localPkg || new Date(remotePkg.updatedAt || remotePkg.createdAt) > new Date(localPkg.updatedAt || localPkg.createdAt)) {
+            await db.put('packages', remotePkg);
+          }
+        }
       }
-    }, intervalMs);
+
+      // 2. Sincronizar Usuarios Remotos
+      if (remoteData && remoteData.users) {
+        for (const remoteUser of remoteData.users) {
+          const localUser = await db.get('users', remoteUser.username);
+          if (!localUser || new Date(remoteUser.updatedAt || remoteUser.createdAt) > new Date(localUser.updatedAt || localUser.createdAt)) {
+            await db.put('users', remoteUser);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('No se pudo completar la descarga de datos remotos:', err);
+    }
   }
 }
 
 const syncEngine = new SyncEngine();
-
-// Iniciar sincronización automática al cargar
-document.addEventListener('DOMContentLoaded', () => {
-  syncEngine.startAutoSync(30000);
-});

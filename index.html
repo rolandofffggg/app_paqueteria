@@ -13,27 +13,44 @@
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
 
-  <!-- Header compacto con Nombre de Empresa Dinámico -->
+  <!-- Header compacto -->
   <header class="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
     <div class="max-w-md mx-auto px-4 py-2 flex items-center justify-between">
       <h1 class="text-base font-bold tracking-wide text-blue-400" id="header-app-title">📦 Paquetería</h1>
       <div class="flex items-center space-x-2 text-[10px]">
+        <span id="session-user-label" class="text-slate-300 font-semibold hidden sm:inline"></span>
         <span id="net-status" class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ONLINE</span>
-        <span id="sync-status" class="hidden px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">Sync...</span>
+        <button onclick="auth.logout()" title="Cerrar Sesión" class="text-red-400 font-bold hover:text-red-300 ml-1">🚪</button>
       </div>
     </div>
   </header>
 
   <!-- Login Modal -->
   <div id="view-login" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl p-5 w-full max-w-xs shadow-xl space-y-3 text-center">
-      <div class="text-3xl">🔐</div>
-      <h2 class="text-lg font-bold text-slate-800">Acceso Operador</h2>
-      <input type="password" id="pin-input" placeholder="Clave de acceso" class="w-full text-center px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-bold">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-xs shadow-xl space-y-4 text-center">
+      <div class="text-4xl">🔐</div>
+      <h2 class="text-lg font-bold text-slate-800">Acceso al Sistema</h2>
+      <div class="space-y-2 text-left">
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">Usuario</label>
+          <input type="text" id="login-username" placeholder="ej. admin" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">PIN de Acceso</label>
+          <input type="password" id="pin-input" placeholder="****" class="w-full text-center px-3 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-bold">
+        </div>
+        <label class="flex items-center gap-2 text-xs text-slate-600 pt-1 cursor-pointer">
+          <input type="checkbox" id="login-remember" class="w-3.5 h-3.5 rounded text-blue-600">
+          <span>Recordarme</span>
+        </label>
+      </div>
       <button onclick="app.login()" class="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-xl hover:bg-blue-700 transition text-sm">Ingresar</button>
-      <p id="login-error" class="text-xs text-red-500 hidden">Clave incorrecta</p>
+      <p id="login-error" class="text-xs text-red-500 hidden font-bold"></p>
     </div>
   </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-xs pointer-events-none px-2"></div>
 
   <!-- Main Content -->
   <main id="main-content" class="flex-1 max-w-md w-full mx-auto p-3 overflow-y-auto pb-16">
@@ -60,7 +77,6 @@
         </div>
       </div>
 
-      <!-- KPI Acumulado -->
       <div class="bg-slate-800 text-white p-2.5 rounded-xl text-center shadow-sm flex justify-between items-center px-4">
         <span class="text-xs font-bold text-slate-300 uppercase">Total Registros Acumulados:</span>
         <span class="text-lg font-black text-blue-400" id="kpi-acumulados">0</span>
@@ -93,23 +109,18 @@
     <section id="sec-reception" class="space-y-3 hidden">
       <div class="flex justify-between items-center">
         <h2 class="text-base font-bold text-slate-700">Registrar Nuevo Paquete</h2>
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
-            <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
-            <span class="text-[10px] font-medium">Fijar Cliente</span>
-          </label>
-        </div>
+        <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+          <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+          <span class="text-[10px] font-medium">Fijar Cliente</span>
+        </label>
       </div>
 
       <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        
-        <!-- Cliente -->
         <div class="relative">
           <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
         </div>
 
-        <!-- Celulares -->
         <div class="grid grid-cols-2 gap-2">
           <div>
             <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
@@ -119,18 +130,14 @@
           </div>
         </div>
 
-        <!-- Código con restricción de formato -->
         <div>
           <div class="flex gap-2">
             <input type="text" id="rec-codigo" required maxlength="5" placeholder="Código Paquete (Ej: P0001)" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono font-bold uppercase">
-            <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">
-              📷 QR
-            </button>
+            <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
           </div>
           <span class="text-[9px] text-slate-400 mt-0.5 block">Exactamente 5 caracteres (Inicia con letra, termina con número).</span>
         </div>
 
-        <!-- Atributos Dinámicos -->
         <div class="grid grid-cols-3 gap-2">
           <div>
             <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
@@ -149,17 +156,12 @@
           </div>
         </div>
 
-        <!-- Selector de Ubicación -->
         <div>
           <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Estante y Fila) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
-
-          <!-- Estantes -->
           <div class="mb-2">
             <span class="block text-[10px] text-slate-500 font-bold mb-1">1. Seleccionar Estante:</span>
             <div id="shelf-buttons" class="grid grid-cols-5 gap-1"></div>
           </div>
-
-          <!-- Filas -->
           <div id="rows-container" class="hidden">
             <span class="block text-[10px] text-slate-500 font-bold mb-1">2. Seleccionar Fila:</span>
             <div id="row-buttons" class="grid grid-cols-5 gap-1"></div>
@@ -172,15 +174,12 @@
       </form>
     </section>
 
-    <!-- Módulo de Notificaciones (Antes Impresión) -->
+    <!-- Módulo de Notificaciones -->
     <section id="sec-print-notify" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Notificaciones de Paquetes</h2>
-      
       <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
         <input type="text" id="print-search-input" oninput="app.searchPrintPackage(this.value)" placeholder="Buscar por código de paquete o cliente..." class="w-full px-3 py-2 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
       </div>
-
-      <!-- Tarjeta Previsualización y Ficha Informativa -->
       <div id="print-card-target" class="bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">
         <p class="text-xs text-slate-400 py-4">Cargando último paquete registrado...</p>
       </div>
@@ -188,9 +187,8 @@
 
     <!-- Ubicaciones View -->
     <section id="sec-inventory" class="space-y-3 hidden">
-      <h2 class="text-base font-bold text-slate-700">Inventario por Ubicación</h2>
+      <h2 class="text-base font-bold text-slate-700">Inventario y Reubicación</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        
         <div class="grid grid-cols-12 gap-1.5 items-center">
           <input type="text" id="inv-loc-input" placeholder="Código Ubicación *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-bold">
           <button onclick="app.setFixedLocationManual()" class="col-span-3 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Fijar</button>
@@ -221,13 +219,10 @@
     <section id="sec-delivery" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Entrega de Paquete</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        
-        <div>
-          <div class="flex gap-2">
-            <input type="text" id="del-search-code" placeholder="Código de Paquete *" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-mono font-bold">
-            <button onclick="app.searchDeliveryManual()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">Buscar</button>
-            <button onclick="scanner.scanForDelivery()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
-          </div>
+        <div class="flex gap-2">
+          <input type="text" id="del-search-code" placeholder="Código de Paquete *" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-mono font-bold">
+          <button onclick="app.searchDeliveryManual()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">Buscar</button>
+          <button onclick="scanner.scanForDelivery()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
         </div>
 
         <div id="del-details" class="hidden space-y-2.5 border-t pt-2.5">
@@ -275,11 +270,9 @@
     <!-- Gestión de Registros View -->
     <section id="sec-manage" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Gestión de Registros</h2>
-      
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <input type="text" id="manage-search" oninput="app.loadManageList()" placeholder="Buscar paquete por código, cliente o ubicación..." class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
       </div>
-
       <div id="manage-list" class="space-y-2">
         <p class="text-xs text-slate-400 text-center py-4">Cargando registros...</p>
       </div>
@@ -295,12 +288,10 @@
 
         <form onsubmit="app.saveEditedPackage(event)" class="space-y-2 text-xs">
           <input type="hidden" id="edit-pkg-id">
-
           <div>
             <label class="block font-semibold text-slate-600 mb-0.5">Cliente</label>
             <input type="text" id="edit-client" required class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Celular Cliente</label>
@@ -311,7 +302,6 @@
               <input type="tel" id="edit-recipient-phone" class="w-full px-2 py-1.5 border rounded-lg font-bold">
             </div>
           </div>
-
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Ubicación</label>
@@ -325,7 +315,6 @@
               </select>
             </div>
           </div>
-
           <div class="grid grid-cols-3 gap-1.5">
             <div>
               <label class="block font-semibold text-slate-600 mb-0.5">Categoría</label>
@@ -340,7 +329,6 @@
               <input type="text" id="edit-color" class="w-full px-1.5 py-1.5 border rounded-lg font-bold">
             </div>
           </div>
-
           <div class="flex gap-2 pt-2">
             <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700">Guardar Cambios</button>
             <button type="button" onclick="app.closeEditModal()" class="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl">Cancelar</button>
@@ -349,23 +337,19 @@
       </div>
     </div>
 
-    <!-- Parámetros / Ajustes View (Con Resguardo de Datos Backup/Restore) -->
+    <!-- Ajustes View (Solo ADMIN) -->
     <section id="sec-settings" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Ajustes Generales</h2>
       
-      <!-- Marca de la Empresa -->
       <form onsubmit="app.saveBrandSettings(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
         <h3 class="text-xs font-bold text-blue-600 uppercase">Configuración de Marca</h3>
         <div>
           <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nombre de la Paquetería</label>
           <input type="text" id="cfg-company-name" placeholder="Ej. Express Bolivia" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
-        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 text-xs">
-          💾 Guardar Nombre Empresa
-        </button>
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 rounded-xl hover:bg-blue-700 text-xs">💾 Guardar Nombre Empresa</button>
       </form>
 
-      <!-- Tarifas -->
       <form onsubmit="app.saveTariffSettings(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
         <h3 class="text-xs font-bold text-blue-600 uppercase">Parámetros de Tarifas</h3>
         <div>
@@ -373,118 +357,150 @@
           <input type="number" step="0.5" id="cfg-rate-base" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Días de Gracia (Sin penalización)</label>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Días de Gracia</label>
           <input type="number" id="cfg-grace-days" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
         <div>
-          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Penalización Diaria por Retraso (Bs.)</label>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Penalización Diaria (Bs.)</label>
           <input type="number" step="0.5" id="cfg-rate-penalty" required class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
-        <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl hover:bg-slate-900 text-xs">
-          💾 Guardar Tarifas
-        </button>
+        <button type="submit" class="w-full bg-slate-800 text-white font-bold py-2 rounded-xl hover:bg-slate-900 text-xs">💾 Guardar Tarifas</button>
       </form>
 
-      <!-- Resguardo y Restauración de Datos (Backup/Restore) -->
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        <h3 class="text-xs font-bold text-blue-600 uppercase">Resguardo de Datos (Backup / Restore)</h3>
-        <p class="text-[10px] text-slate-500">Exporte una copia JSON de todos los registros o restaure una copia previa.</p>
-        
+        <h3 class="text-xs font-bold text-blue-600 uppercase">Resguardo (Backup / Restore)</h3>
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="app.exportBackup()" class="bg-emerald-600 text-white font-bold py-2 rounded-xl hover:bg-emerald-700 text-xs flex items-center justify-center gap-1">
-            📥 Exportar Backup
-          </button>
-          <label class="bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 text-xs flex items-center justify-center gap-1 cursor-pointer text-center">
-            📤 Restaurar Backup
+          <button onclick="app.exportBackup()" class="bg-emerald-600 text-white font-bold py-2 rounded-xl hover:bg-emerald-700 text-xs">📥 Exportar Backup</button>
+          <label class="bg-amber-600 text-white font-bold py-2 rounded-xl hover:bg-amber-700 text-xs cursor-pointer text-center py-2">
+            📤 Restaurar
             <input type="file" id="import-backup-file" accept=".json" onchange="app.importBackup(event)" class="hidden">
           </label>
         </div>
       </div>
+    </section>
 
-      <!-- Catalogación Dinámica -->
-      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <h3 class="text-xs font-bold text-blue-600 uppercase">Catalogación Dinámica</h3>
+    <!-- Nuevo Módulo UI: Gestión de Usuarios (Solo ADMIN) -->
+    <section id="sec-users" class="space-y-3 hidden">
+      <h2 class="text-base font-bold text-slate-700">Gestión de Usuarios</h2>
+
+      <!-- Formulario de Creación / Edición de Usuarios -->
+      <form id="form-user-manage" onsubmit="app.saveUser(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+        <input type="hidden" id="usr-is-edit" value="false">
+        <h3 class="text-xs font-bold text-blue-600 uppercase" id="usr-form-title">Crear Nuevo Usuario</h3>
         
-        <!-- Categorías -->
-        <div class="space-y-1">
-          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Contenido</label>
-          <div class="flex gap-2">
-            <input type="text" id="add-opt-category" placeholder="Nuevo Contenido" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
-            <button onclick="app.addCatalogOption('categories', 'add-opt-category')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
-          </div>
-          <div id="list-opts-categories" class="flex flex-wrap gap-1 pt-1"></div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">Nombre Completo</label>
+          <input type="text" id="usr-fullname" required placeholder="Ej. Juan Pérez" class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
         </div>
 
-        <!-- Tamaños -->
-        <div class="space-y-1 border-t pt-2">
-          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Tamaño</label>
-          <div class="flex gap-2">
-            <input type="text" id="add-opt-size" placeholder="Nuevo Tamaño" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
-            <button onclick="app.addCatalogOption('sizes', 'add-opt-size')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">Usuario</label>
+            <input type="text" id="usr-username" required placeholder="ej. jperez" class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
           </div>
-          <div id="list-opts-sizes" class="flex flex-wrap gap-1 pt-1"></div>
+          <div>
+            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">PIN (4-6 dígitos)</label>
+            <input type="password" id="usr-pin" required maxlength="6" placeholder="****" class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold">
+          </div>
         </div>
 
-        <!-- Colores -->
-        <div class="space-y-1 border-t pt-2">
-          <label class="block text-[11px] font-bold text-slate-600 uppercase">Opciones de Color</label>
-          <div class="flex gap-2">
-            <input type="text" id="add-opt-color" placeholder="Nuevo Color" class="flex-1 px-2.5 py-1 border rounded-lg text-xs font-bold">
-            <button onclick="app.addCatalogOption('colors', 'add-opt-color')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">+</button>
-          </div>
-          <div id="list-opts-colors" class="flex flex-wrap gap-1 pt-1"></div>
+        <div>
+          <label class="block text-[11px] font-bold text-slate-600 uppercase mb-0.5">Rol de Acceso</label>
+          <select id="usr-role" class="w-full px-3 py-1.5 border rounded-lg text-xs font-bold bg-white">
+            <option value="OPERATOR">OPERATOR (Operaciones de Campo)</option>
+            <option value="ADMIN">ADMIN (Acceso Total)</option>
+          </select>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-blue-700">💾 Guardar Usuario</button>
+          <button type="button" onclick="app.resetUserForm()" class="bg-slate-100 text-slate-600 font-bold px-3 py-2 rounded-xl text-xs">Cancelar</button>
+        </div>
+      </form>
+
+      <!-- Tabla / Lista de Usuarios -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
+        <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Usuarios Registrados</h3>
+        <div id="users-list" class="space-y-2 divide-y divide-slate-100">
+          <p class="text-xs text-slate-400 text-center py-2">Cargando usuarios...</p>
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Navigation Bar Mobile -->
+  <!-- Navigation Bar Mobile (Con SVG Vectoriales) -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
-    <div class="max-w-md mx-auto h-full grid grid-cols-7 text-center">
+    <div class="max-w-md mx-auto h-full grid grid-cols-8 text-center">
+      
+      <!-- Dashboard -->
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📊</span><span class="text-[7px] leading-tight">Inventario</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Dashboard</span>
       </button>
+
+      <!-- Recepción -->
       <button onclick="app.showSec('sec-reception')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📦</span><span class="text-[7px] leading-tight">Recepción</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M20 13H4V5h16m0-2H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2m-8 9.5l4.5-4.5H13V7h-2v3.5H8.5L12 14.5z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Recepción</span>
       </button>
+
+      <!-- Notificaciones -->
       <button onclick="app.showSec('sec-print-notify')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">🔔</span><span class="text-[7px] leading-tight">Notificaciones</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Notificar</span>
       </button>
+
+      <!-- Ubicaciones -->
       <button onclick="app.showSec('sec-inventory')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">📋</span><span class="text-[7px] leading-tight">Ubicaciones</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Ubicación</span>
       </button>
+
+      <!-- Entrega -->
       <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">🚚</span><span class="text-[7px] leading-tight">Entrega</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Entrega</span>
       </button>
+
+      <!-- Gestión -->
       <button onclick="app.showSec('sec-manage')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">✏️</span><span class="text-[7px] leading-tight">Edición</span>
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Gestión</span>
       </button>
-      <button onclick="app.showSec('sec-settings')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
-        <span class="text-sm">⚙️</span><span class="text-[7px] leading-tight">Ajustes</span>
+
+      <!-- Ajustes (Solo ADMIN) -->
+      <button onclick="app.showSec('sec-settings')" class="nav-btn nav-admin-only flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Ajustes</span>
       </button>
+
+      <!-- Usuarios (Solo ADMIN) -->
+      <button onclick="app.showSec('sec-users')" class="nav-btn nav-admin-only flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Usuarios</span>
+      </button>
+
     </div>
   </nav>
 
-  <!-- Modal Cámara Scanner con Overlay de Enfoque Centrado -->
+  <!-- Modal Cámara Scanner -->
   <div id="modal-scanner" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col justify-between p-4">
     <div class="flex justify-between items-center text-white z-10">
       <h3 class="text-xs font-semibold" id="scan-title">Escanear Código QR</h3>
       <button onclick="scanner.close()" class="text-xl font-bold">&times;</button>
     </div>
-    
     <div class="relative w-full max-w-xs mx-auto my-auto overflow-hidden rounded-2xl border-2 border-blue-500/50">
       <div id="reader" class="w-full bg-slate-900"></div>
-      <!-- Overlay / Guía Visual de Enfoque Dynamic Focus Box -->
       <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div class="w-48 h-48 border-2 border-dashed border-emerald-400 rounded-xl animate-pulse shadow-[0_0_15px_rgba(52,211,153,0.5)]"></div>
       </div>
     </div>
-
     <button onclick="scanner.close()" class="w-full bg-white/20 text-white py-2.5 rounded-xl text-xs font-semibold z-10">Cancelar</button>
   </div>
 
   <script src="./js/db.js"></script>
+  <script src="./js/auth.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/sync.js"></script>
   <script src="./js/scanner.js"></script>

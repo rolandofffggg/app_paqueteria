@@ -1,67 +1,77 @@
 /**
- * Backend en Google Apps Script para ParcelTrack_DB.
- * Permite la sincronización de registros entre múltiples usuarios en tiempo real.
+ * Servidor Backend en Google Apps Script para ParcelTrack_DB.
+ * Maneja la sincronización multiusuario de Paquetes y Usuarios.
  */
 
-// Nombre de la base de datos / hoja
 const DB_SHEET_NAME = 'PAQUETES';
+const DB_USERS_SHEET_NAME = 'USUARIOS';
 
-/**
- * Endpoint GET: Descarga los registros centralizados para sincronización remota.
- */
 function doGet(e) {
   try {
-    const sheet = getDatabaseSheet();
-    const data = sheet.getDataRange().getValues();
-    
-    if (data.length <= 1) {
-      return responseJSON([]);
+    const action = e.parameter.action;
+
+    // Si se solicita la lista de usuarios remotos
+    if (action === 'getUsers') {
+      const userSheet = getOrCreateUserSheet();
+      const userData = userSheet.getDataRange().getValues();
+      if (userData.length <= 1) return responseJSON([]);
+      const userHeaders = userData[0];
+      const users = userData.slice(1).map(row => {
+        let u = {};
+        userHeaders.forEach((h, i) => u[h] = row[i]);
+        return u;
+      });
+      return responseJSON(users);
     }
 
-    const headers = data[0];
-    const rows = data.slice(1);
+    // Por defecto, retorna la lista de paquetes
+    const sheet = getDatabaseSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return responseJSON([]);
 
-    const records = rows.map(row => {
+    const headers = data[0];
+    const packages = data.slice(1).map(row => {
       let pkg = {};
-      headers.forEach((header, index) => {
-        pkg[header] = row[index];
-      });
+      headers.forEach((header, index) => pkg[header] = row[index]);
       return pkg;
     });
 
-    return responseJSON(records);
+    return responseJSON(packages);
   } catch (error) {
     return responseJSON({ status: 'error', message: error.toString() });
   }
 }
 
-/**
- * Endpoint POST: Procesa creaciones, ediciones, entregas y eliminaciones de cada usuario.
- */
 function doPost(e) {
   const lock = LockService.getScriptLock();
-  // Bloqueo temporal para evitar conflictos entre solicitudes concurrentes de distintos usuarios
   lock.tryLock(10000);
 
   try {
     if (!e.postData || !e.postData.contents) {
-      return responseJSON({ status: 'error', message: 'No se recibieron datos de sincronización.' });
+      return responseJSON({ status: 'error', message: 'No se recibieron datos.' });
     }
 
     const syncItem = JSON.parse(e.postData.contents);
-    const sheet = getDatabaseSheet();
     const actionType = syncItem.type;
     const payload = syncItem.payload;
 
+    // --- MANEJO DE USUARIOS ---
+    if (actionType === 'SYNC_USER') {
+      const userSheet = getOrCreateUserSheet();
+      const result = saveOrUpdateUser(userSheet, payload);
+      return responseJSON(result);
+    }
+
+    // --- MANEJO DE PAQUETES ---
     if (!payload || !payload.packageId) {
       return responseJSON({ status: 'error', message: 'Identificador de registro no válido.' });
     }
 
+    const sheet = getDatabaseSheet();
     let result;
+
     switch (actionType) {
       case 'CREATE':
-        result = saveOrUpdateRecord(sheet, payload);
-        break;
       case 'UPDATE':
       case 'DELIVERY':
         result = saveOrUpdateRecord(sheet, payload);
@@ -82,104 +92,95 @@ function doPost(e) {
   }
 }
 
-/**
- * Guarda o actualiza un registro basándose en su ID único en ParcelTrack_DB.
- */
+// --- FUNCIONES AUXILIARES PARA PAQUETES ---
 function saveOrUpdateRecord(sheet, record) {
   const headers = getDatabaseHeaders();
   const rowIndex = findRowIndexById(sheet, record.packageId);
-
   const rowData = headers.map(header => record[header] !== undefined ? record[header] : '');
 
   if (rowIndex > -1) {
-    // Si ya existe en la hoja, sobreescribe la fila con los datos más recientes
     sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
     return { status: 'success', action: 'UPDATE', packageId: record.packageId };
   } else {
-    // Si es nuevo, lo agrega al final
     sheet.appendRow(rowData);
     return { status: 'success', action: 'CREATE', packageId: record.packageId };
   }
 }
 
-/**
- * Elimina la fila correspondiente a un packageId.
- */
 function deleteRecord(sheet, packageId) {
   const rowIndex = findRowIndexById(sheet, packageId);
-
   if (rowIndex !== -1) {
     sheet.deleteRow(rowIndex);
     return { status: 'success', action: 'DELETE', packageId: packageId };
   }
-
-  return { status: 'warning', message: 'Registro no encontrado en ParcelTrack_DB.', packageId: packageId };
+  return { status: 'warning', message: 'Registro no encontrado.', packageId: packageId };
 }
 
-/**
- * Busca la fila exacta del paquete en la hoja de cálculo.
- */
 function findRowIndexById(sheet, packageId) {
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return -1;
-
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === packageId) {
-      return i + 1; // Ajuste por índice de fila en Sheets (empieza en 1)
-    }
+    if (data[i][0] === packageId) return i + 1;
   }
   return -1;
 }
 
-/**
- * Inicializa y obtiene la pestaña PAQUETES en el libro ParcelTrack_DB.
- */
 function getDatabaseSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(DB_SHEET_NAME);
-
-  if (!sheet) {
-    sheet = ss.insertSheet(DB_SHEET_NAME);
-    sheet.appendRow(getDatabaseHeaders());
-    sheet.getRange(1, 1, 1, getDatabaseHeaders().length).setFontWeight('bold');
-  } else if (sheet.getLastRow() === 0) {
+  if (!sheet || sheet.getLastRow() === 0) {
+    if (!sheet) sheet = ss.insertSheet(DB_SHEET_NAME);
     sheet.appendRow(getDatabaseHeaders());
     sheet.getRange(1, 1, 1, getDatabaseHeaders().length).setFontWeight('bold');
   }
-
   return sheet;
 }
 
-/**
- * Esquema de columnas de ParcelTrack_DB para auditar las acciones por usuario.
- */
 function getDatabaseHeaders() {
   return [
-    'packageId',
-    'code',
-    'qrCode',
-    'client',
-    'phone',
-    'recipientPhone',
-    'category',
-    'size',
-    'color',
-    'location',
-    'status',
-    'createdAt',
-    'createdBy',
-    'updatedAt',
-    'updatedBy',
-    'deliveredTo',
-    'deliveredAt',
-    'deliveredBy',
-    'amountCharged'
+    'packageId', 'code', 'qrCode', 'client', 'phone', 'recipientPhone',
+    'category', 'size', 'color', 'location', 'status', 'createdAt',
+    'createdBy', 'updatedAt', 'updatedBy', 'deliveredTo', 'deliveredAt',
+    'deliveredBy', 'amountCharged'
   ];
 }
 
-/**
- * Formateador de respuesta JSON con soporte para CORS.
- */
+// --- FUNCIONES AUXILIARES PARA USUARIOS ---
+function saveOrUpdateUser(sheet, user) {
+  const headers = ['username', 'fullName', 'pin', 'role', 'status', 'createdAt'];
+  const data = sheet.getDataRange().getValues();
+  let rowIndex = -1;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === user.username) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  const rowData = headers.map(h => user[h] !== undefined ? user[h] : '');
+
+  if (rowIndex > -1) {
+    sheet.getRange(rowIndex, 1, 1, headers.length).setValues([rowData]);
+    return { status: 'success', action: 'UPDATE_USER', username: user.username };
+  } else {
+    sheet.appendRow(rowData);
+    return { status: 'success', action: 'CREATE_USER', username: user.username };
+  }
+}
+
+function getOrCreateUserSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(DB_USERS_SHEET_NAME);
+  if (!sheet || sheet.getLastRow() === 0) {
+    if (!sheet) sheet = ss.insertSheet(DB_USERS_SHEET_NAME);
+    const headers = ['username', 'fullName', 'pin', 'role', 'status', 'createdAt'];
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  }
+  return sheet;
+}
+
 function responseJSON(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);

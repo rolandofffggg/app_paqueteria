@@ -1,36 +1,63 @@
-// Reemplaza esta URL con el enlace de tu Web App desplegada en Google Apps Script
-const API_URL = 'https://script.google.com/macros/s/AKfycbyOZpnkHZUu13TURsRMx4cuwkpN5JqPzHE2Fc6bBe_yyAAwIV9pGQqmwWoN8220aqMGgA/exec';
+/**
+ * Conector API con Google Apps Script / ParcelTrack_DB
+ */
+const PARCELTRACK_API_URL = 'https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec';
 
-const api = {
-  // Sincronización Push (Local -> Nube)
-  async sendBatch(operations) {
-    if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) return false;
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'syncBatch', operations })
-      });
-      if (!res.ok) return false;
-      const data = await res.json();
-      return !!data.success;
-    } catch (e) {
-      console.error('Error Sync Push (sendBatch):', e);
-      return false;
+class ApiService {
+  /**
+   * Envía un elemento de la cola de sincronización local hacia ParcelTrack_DB.
+   */
+  async sendSyncItem(syncItem) {
+    if (!PARCELTRACK_API_URL || PARCELTRACK_API_URL.includes('TU_SCRIPT_ID_AQUI')) {
+      console.warn('URL de ParcelTrack_DB no configurada.');
+      return;
     }
-  },
 
-  // Sincronización Pull (Nube -> Local)
-  async fetchPackages() {
-    if (!navigator.onLine || !API_URL || API_URL.includes('REEMPLAZAR')) return null;
     try {
-      const res = await fetch(API_URL, { method: 'GET' });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return data.success && Array.isArray(data.packages) ? data.packages : null;
-    } catch (e) {
-      console.error('Error Sync Pull (fetchPackages):', e);
-      return null;
+      const response = await fetch(PARCELTRACK_API_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: JSON.stringify(syncItem)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error en servidor: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error al sincronizar elemento con ParcelTrack_DB:', error);
+      throw error;
     }
   }
-};
+
+  /**
+   * Obtiene todos los paquetes actualizados desde ParcelTrack_DB.
+   */
+  async getRemotePackages() {
+    if (!PARCELTRACK_API_URL || PARCELTRACK_API_URL.includes('TU_SCRIPT_ID_AQUI')) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(PARCELTRACK_API_URL, {
+        method: 'GET',
+        mode: 'cors'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error al obtener datos: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error al descargar registros de ParcelTrack_DB:', error);
+      return [];
+    }
+  }
+}
+
+const api = new ApiService();

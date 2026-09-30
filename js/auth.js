@@ -93,9 +93,12 @@ class AuthManager {
       }
     });
 
+    // Formato de abreviación para el encabezado: Adm. / Ope.
     const userLabel = document.getElementById('session-user-label');
     if (userLabel && this.currentUser) {
-      userLabel.textContent = `${this.currentUser.fullName} (${this.currentUser.role})`;
+      const roleAbbr = this.currentUser.role === 'ADMIN' ? 'Adm.' : 'Ope.';
+      userLabel.textContent = `${this.currentUser.fullName} (${roleAbbr})`;
+      userLabel.classList.remove('hidden');
     }
   }
 }

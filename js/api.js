@@ -1,7 +1,7 @@
 /**
  * Conector API con Google Apps Script / ParcelTrack_DB
  */
-const PARCELTRACK_API_URL = 'https://script.google.com/macros/s/AKfycbyOZpnkHZUu13TURsRMx4cuwkpN5JqPzHE2Fc6bBe_yyAAwIV9pGQqmwWoN8220aqMGgA/exec';
+const PARCELTRACK_API_URL = 'https://script.google.com/macros/s/TU_SCRIPT_ID_AQUI/exec';
 
 class ApiService {
   /**
@@ -49,12 +49,37 @@ class ApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`Error al obtener datos: ${response.statusText}`);
+        throw new Error(`Error al obtener paquetes: ${response.statusText}`);
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error al descargar registros de ParcelTrack_DB:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Obtiene la lista remota de usuarios desde ParcelTrack_DB.
+   */
+  async getRemoteUsers() {
+    if (!PARCELTRACK_API_URL || PARCELTRACK_API_URL.includes('TU_SCRIPT_ID_AQUI')) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(`${PARCELTRACK_API_URL}?action=getUsers`, {
+        method: 'GET',
+        mode: 'cors'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error al obtener usuarios: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error al descargar usuarios de ParcelTrack_DB:', error);
       return [];
     }
   }

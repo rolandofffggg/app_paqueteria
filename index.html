@@ -106,87 +106,87 @@
       </div>
     </section>
 
-<!-- Recepción View -->
-<section id="sec-reception" class="space-y-3 hidden">
-  <div class="flex justify-between items-center">
-    <h2 class="text-base font-bold text-slate-700">Registrar Nuevo Paquete</h2>
-    <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
-      <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
-      <span class="text-[10px] font-medium">Fijar Cliente</span>
-    </label>
-  </div>
+    <!-- Recepción View -->
+    <section id="sec-reception" class="space-y-3 hidden">
+      <div class="flex justify-between items-center">
+        <h2 class="text-base font-bold text-slate-700">Registrar Nuevo Paquete</h2>
+        <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+          <input type="checkbox" id="chk-keep-client" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+          <span class="text-[10px] font-medium">Fijar Cliente</span>
+        </label>
+      </div>
 
-  <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-    <div class="relative">
-      <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-      <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
-    </div>
-
-    <div class="grid grid-cols-2 gap-2">
-      <div>
-        <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-      </div>
-      <div>
-        <input type="tel" id="rec-celular-dest" placeholder="Celular Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-      </div>
-    </div>
-
-    <div>
-      <div class="flex gap-2">
-        <input type="text" id="rec-codigo" required placeholder="Código Paquete (Libre)" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono font-bold uppercase">
-        <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
-      </div>
-      <span class="text-[9px] text-slate-400 mt-0.5 block">Permite cualquier tipo de carácter o longitud alfanumérica.</span>
-    </div>
-
-    <div class="grid grid-cols-3 gap-2">
-      <div>
-        <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-          <option value="" disabled selected>Contenido</option>
-        </select>
-      </div>
-      <div>
-        <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-          <option value="" disabled selected>Tamaño</option>
-        </select>
-      </div>
-      <div>
-        <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-          <option value="" disabled selected>Color</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- Listas desplegables encadenadas -->
-    <div>
-      <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Grupo1-Grupo2-Grupo3) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
-      <div class="grid grid-cols-3 gap-1.5">
-        <div>
-          <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 1:</label>
-          <select id="rec-grupo1" onchange="app.handleGroup1Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white">
-            <option value="" disabled selected>Seleccionar...</option>
-          </select>
+      <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+        <div class="relative">
+          <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+          <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
         </div>
-        <div>
-          <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 2:</label>
-          <select id="rec-grupo2" disabled onchange="app.handleGroup2Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="" disabled selected>Seleccionar...</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 3:</label>
-          <select id="rec-grupo3" disabled onchange="app.handleGroup3Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white disabled:bg-slate-100 disabled:text-slate-400">
-            <option value="" disabled selected>Seleccionar...</option>
-          </select>
-        </div>
-      </div>
-    </div>
 
-    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition mt-1 text-xs">
-      💾 Guardar Registro de Paquete
-    </button>
-  </form>
-</section>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <input type="tel" id="rec-celular" placeholder="Celular Cliente" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+          </div>
+          <div>
+            <input type="tel" id="rec-celular-dest" placeholder="Celular Destinatario" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex gap-2">
+            <input type="text" id="rec-codigo" required placeholder="Código Paquete (Libre)" class="flex-1 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-mono font-bold uppercase">
+            <button type="button" onclick="scanner.scanToInput('rec-codigo')" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
+          </div>
+          <span class="text-[9px] text-slate-400 mt-0.5 block">Permite cualquier tipo de carácter o longitud alfanumérica.</span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+              <option value="" disabled selected>Contenido</option>
+            </select>
+          </div>
+          <div>
+            <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+              <option value="" disabled selected>Tamaño</option>
+            </select>
+          </div>
+          <div>
+            <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+              <option value="" disabled selected>Color</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Listas desplegables encadenadas -->
+        <div>
+          <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Grupo1-Grupo2-Grupo3) *" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
+          <div class="grid grid-cols-3 gap-1.5">
+            <div>
+              <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 1:</label>
+              <select id="rec-grupo1" onchange="app.handleGroup1Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white">
+                <option value="" disabled selected>Seleccionar...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 2:</label>
+              <select id="rec-grupo2" disabled onchange="app.handleGroup2Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                <option value="" disabled selected>Seleccionar...</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[9px] text-slate-500 font-bold mb-1">Grupo 3:</label>
+              <select id="rec-grupo3" disabled onchange="app.handleGroup3Change(this.value)" class="w-full px-2 py-2 border rounded-lg text-xs font-bold bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                <option value="" disabled selected>Seleccionar...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl hover:bg-blue-700 transition mt-1 text-xs">
+          💾 Guardar Registro de Paquete
+        </button>
+      </form>
+    </section>
     
     <!-- Módulo de Notificaciones -->
     <section id="sec-print-notify" class="space-y-3 hidden">
@@ -406,7 +406,7 @@
         </form>
       </div>
 
-      <!-- Configuración de Grupos / Ubicaciones (Movido exclusivamente a Ajustes) -->
+      <!-- Configuración de Grupos / Ubicaciones -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">📍 Configuración de Grupos de Ubicación</h3>
         <form onsubmit="app.saveLocationGroupsSettings(event)" class="space-y-3">
@@ -442,7 +442,6 @@
     <section id="sec-users" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Gestión de Usuarios</h2>
 
-      <!-- Formulario de Creación / Edición de Usuarios -->
       <form id="form-user-manage" onsubmit="app.saveUser(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <input type="hidden" id="usr-is-edit" value="false">
         <h3 class="text-xs font-bold text-blue-600 uppercase" id="usr-form-title">Crear Nuevo Usuario</h3>
@@ -477,7 +476,6 @@
         </div>
       </form>
 
-      <!-- Tabla / Lista de Usuarios -->
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2">
         <h3 class="text-xs font-bold text-slate-700 uppercase mb-2">Usuarios Registrados</h3>
         <div id="users-list" class="space-y-2 divide-y divide-slate-100">
@@ -488,7 +486,7 @@
 
   </main>
 
-<!-- Navigation Bar Mobile -->
+  <!-- Navigation Bar Mobile -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
     <div class="max-w-md mx-auto h-full grid grid-cols-8 text-center">
       

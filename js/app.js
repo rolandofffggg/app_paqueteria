@@ -2,6 +2,7 @@ class App {
   constructor() {
     this.selectedDeliveryPackage = null;
     this.lastCreatedPackage = null;
+    this.currentNotifyPackage = null; // Variable de control para el módulo Notificar
     this.currentCalculatedAmount = 0;
     this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
     this.companyName = '';
@@ -101,7 +102,7 @@ class App {
     } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
-      await this.loadPrintNotifyView();
+      this.loadPrintNotifyView();
     } else if (secId === 'sec-users') {
       this.loadUsersList();
     }
@@ -268,7 +269,95 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR, RENDERIZAR Y FILTRAR ---
+  // --- MÓDULO "NOTIFICAR": MÉTODOS ACTUALIZADOS Y ROBUSTOS ---
+  async loadPrintNotifyView() {
+    const searchInput = document.getElementById('print-search-input');
+    if (searchInput) searchInput.value = '';
+
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      this.currentNotifyPackage = null;
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
+      return;
+    }
+
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    this.renderPrintCard(packages[0]);
+  }
+
+  async searchPrintPackage(query) {
+    const q = (query || '').toLowerCase().trim();
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+
+    const packages = await db.getAll('packages');
+    if (!q) {
+      this.loadPrintNotifyView();
+      return;
+    }
+
+    const filtered = packages.filter(p => 
+      (p.code || '').toLowerCase().includes(q) || 
+      (p.client || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      this.currentNotifyPackage = null;
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete.</p>';
+      return;
+    }
+
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    this.renderPrintCard(filtered[0]);
+  }
+
+  renderPrintCard(pkg) {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard || !pkg) return;
+    
+    this.currentNotifyPackage = pkg;
+
+    const qr = qrcode(4, 'L');
+    qr.addData(pkg.qrCode);
+    qr.make();
+    const qrImg = qr.createImgTag(4);
+    const hasClientPhone = !!pkg.phone;
+    const hasRecipientPhone = !!pkg.recipientPhone;
+    
+    printCard.innerHTML = `
+      <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
+      <div class="flex justify-center my-0.5">${qrImg}</div>
+      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
+        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        <p><strong>Contenido:</strong> ${pkg.category} | <strong>Tamaño:</strong> ${pkg.size} | <strong>Color:</strong> ${pkg.color}</p>
+        <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
+      </div>
+      <div class="space-y-1.5 pt-0.5">
+        <button onclick="app.shareCurrentPackageQR()" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+          📤 Compartir Imagen QR (PNG)
+        </button>
+        <button onclick="app.sendWhatsAppNotification('client')" ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+          🟢 Enviar WhatsApp Cliente
+        </button>
+        <button onclick="app.sendWhatsAppNotification('recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+          🟢 Enviar WhatsApp Destinatario
+        </button>
+      </div>
+    `;
+  }
+
+  async shareCurrentPackageQR() {
+    if (!this.currentNotifyPackage) return;
+    const pkg = this.currentNotifyPackage;
+    await this.sharePackageQR(pkg.qrCode, pkg.code, pkg.client);
+  }
+
   async sharePackageQR(qrText, code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
@@ -311,99 +400,10 @@ class App {
     }, 150);
   }
 
-  renderPrintCard(pkg) {
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard || !pkg) return;
-    
-    const qr = qrcode(4, 'L');
-    qr.addData(pkg.qrCode);
-    qr.make();
-    const qrImg = qr.createImgTag(4);
-    const hasClientPhone = !!pkg.phone;
-    const hasRecipientPhone = !!pkg.recipientPhone;
-    
-    printCard.innerHTML = `
-      <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
-      <div class="flex justify-center my-0.5">${qrImg}</div>
-      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
-        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
-        <p><strong>Contenido:</strong> ${pkg.category} | <strong>Tamaño:</strong> ${pkg.size} | <strong>Color:</strong> ${pkg.color}</p>
-        <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
-      </div>
-      <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.qrCode}', '${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
-          📤 Compartir Imagen QR (PNG)
-        </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
-          🟢 Enviar WhatsApp Cliente
-        </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
-          🟢 Enviar WhatsApp Destinatario
-        </button>
-      </div>
-    `;
-  }
+  sendWhatsAppNotification(type) {
+    const pkg = this.currentNotifyPackage;
+    if (!pkg) return;
 
-async loadPrintNotifyView() {
-    const printCard = document.getElementById('print-card-target');
-    const searchInput = document.getElementById('print-search-input');
-    if (searchInput) searchInput.value = ''; // Limpiar buscador al entrar a la sección
-    if (!printCard) return;
-
-    try {
-      const packages = await db.getAll('packages');
-      if (!packages || packages.length === 0) {
-        printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
-        return;
-      }
-      // Ordenar por fecha descendente para obtener el último registrado
-      packages.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      this.renderPrintCard(packages[0]);
-    } catch (err) {
-      console.error('Error al cargar la vista de notificaciones:', err);
-      printCard.innerHTML = '<p class="text-xs text-red-400 py-4">Error al cargar el último paquete.</p>';
-    }
-  }
-
-  async searchPrintPackage(query) {
-    const q = (query || '').toLowerCase().trim();
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-
-    try {
-      const packages = await db.getAll('packages');
-      if (!packages || packages.length === 0) {
-        printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
-        return;
-      }
-
-      if (!q) {
-        packages.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        this.renderPrintCard(packages[0]);
-        return;
-      }
-
-      const filtered = packages.filter(p => {
-        const code = (p.code || '').toLowerCase();
-        const client = (p.client || '').toLowerCase();
-        return code.includes(q) || client.includes(q);
-      });
-
-      if (filtered.length === 0) {
-        printCard.innerHTML = `<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete para "${q}".</p>`;
-        return;
-      }
-
-      filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      this.renderPrintCard(filtered[0]);
-    } catch (err) {
-      console.error('Error al filtrar paquetes en notificaciones:', err);
-    }
-  }
-  sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {
       this.showToast('El paquete no tiene registrado un número telefónico.');

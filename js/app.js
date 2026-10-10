@@ -15,6 +15,9 @@ class App {
       group2: ['PASILLO 1', 'PASILLO 2', 'PASILLO 3'],
       group3: ['ESTANTE A', 'ESTANTE B', 'ESTANTE C']
     };
+    this.selectedGroup1 = null;
+    this.selectedGroup2 = null;
+    this.selectedGroup3 = null;
   }
 
   async init() {
@@ -93,7 +96,9 @@ class App {
         btn.classList.add('text-slate-500');
       }
     });
-    if (secId === 'sec-manage') {
+    if (secId === 'sec-reception') {
+      this.populateGroupSelects();
+    } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
       this.loadPrintNotifyView();
@@ -102,7 +107,6 @@ class App {
     }
   }
 
-  // --- RECEPCIÓN DE PAQUETES ---
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
@@ -121,11 +125,11 @@ class App {
     const rawRecipientPhone = document.getElementById('rec-celular-dest').value;
     const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
     const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
-    const locationVal = document.getElementById('rec-ubicacion').value.trim().toUpperCase();
+    const locationVal = document.getElementById('rec-ubicacion').value;
     const keepClient = document.getElementById('chk-keep-client').checked;
     
-    if (!locationVal) {
-      this.showToast('Ingrese la ubicación del paquete.');
+    if (!locationVal || locationVal.split('-').length < 3) {
+      this.showToast('Complete la selección de los tres grupos de ubicación.');
       return;
     }
     const activeUser = auth.getUser();
@@ -156,14 +160,15 @@ class App {
       document.getElementById('rec-codigo').value = '';
       document.getElementById('rec-celular-dest').value = '';
       document.getElementById('rec-ubicacion').value = '';
+      this.populateGroupSelects();
     } else {
       document.getElementById('form-reception').reset();
+      this.populateGroupSelects();
     }
     this.loadDashboard();
     syncEngine.processQueue();
   }
 
-  // --- CONFIGURACIÓN DE GRUPOS DE UBICACIÓN (Solo en Ajustes) ---
   async loadLocationGroupsSettings() {
     const saved = await db.get('settings', 'locationGroups');
     if (saved && saved.value) this.locationGroups = saved.value;
@@ -174,6 +179,8 @@ class App {
     if (g1El) g1El.value = this.locationGroups.group1 ? this.locationGroups.group1.join(', ') : '';
     if (g2El) g2El.value = this.locationGroups.group2 ? this.locationGroups.group2.join(', ') : '';
     if (g3El) g3El.value = this.locationGroups.group3 ? this.locationGroups.group3.join(', ') : '';
+    
+    this.populateGroupSelects();
   }
 
   async saveLocationGroupsSettings(e) {
@@ -188,51 +195,128 @@ class App {
     };
     await db.put('settings', { key: 'locationGroups', value: this.locationGroups });
     await db.put('syncQueue', { id: 'SYNC-SET-' + Date.now(), type: 'SYNC_SETTING', payload: { key: 'locationGroups', value: this.locationGroups } });
+    this.populateGroupSelects();
     this.showToast('¡Grupos de ubicación guardados y sincronizados!', 'success');
     syncEngine.processQueue();
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN ---
-  async sharePackageQR(code, client, location) {
-    const printCard = document.getElementById('print-card-target');
-    const imgEl = printCard ? printCard.querySelector('img') : null;
+  populateGroupSelects() {
+    const sel1 = document.getElementById('rec-grupo1');
+    const sel2 = document.getElementById('rec-grupo2');
+    const sel3 = document.getElementById('rec-grupo3');
+    
+    if (sel1) {
+      sel1.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
+        this.locationGroups.group1.map(val => `<option value="${val}">${val}</option>`).join('');
+    }
+    if (sel2) {
+      sel2.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+      sel2.disabled = true;
+    }
+    if (sel3) {
+      sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+      sel3.disabled = true;
+    }
+    this.selectedGroup1 = null;
+    this.selectedGroup2 = null;
+    this.selectedGroup3 = null;
+    this.updateCascadingLocationInput();
+  }
 
-    if (imgEl && imgEl.src && navigator.canShare) {
-      try {
-        const response = await fetch(imgEl.src);
-        const blob = await response.blob();
-        const file = new File([blob], `QR_${code}.png`, { type: "image/png" });
-        
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `Código QR - Paquete ${code}`,
-            text: `Código QR del paquete ${code} para el cliente ${client} ubicado en ${location}.`,
-            files: [file],
-          });
+  handleGroup1Change(val) {
+    this.selectedGroup1 = val;
+    this.selectedGroup2 = null;
+    this.selectedGroup3 = null;
+    
+    const sel2 = document.getElementById('rec-grupo2');
+    const sel3 = document.getElementById('rec-grupo3');
+    
+    sel2.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
+      this.locationGroups.group2.map(item => `<option value="${item}">${item}</option>`).join('');
+    sel2.disabled = false;
+    
+    sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
+    sel3.disabled = true;
+    
+    this.updateCascadingLocationInput();
+  }
+
+  handleGroup2Change(val) {
+    this.selectedGroup2 = val;
+    this.selectedGroup3 = null;
+    
+    const sel3 = document.getElementById('rec-grupo3');
+    sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
+      this.locationGroups.group3.map(item => `<option value="${item}">${item}</option>`).join('');
+    sel3.disabled = false;
+    
+    this.updateCascadingLocationInput();
+  }
+
+  handleGroup3Change(val) {
+    this.selectedGroup3 = val;
+    this.updateCascadingLocationInput();
+  }
+
+  updateCascadingLocationInput() {
+    const input = document.getElementById('rec-ubicacion');
+    if (!input) return;
+    let parts = [];
+    if (this.selectedGroup1) parts.push(this.selectedGroup1);
+    if (this.selectedGroup2) parts.push(this.selectedGroup2);
+    if (this.selectedGroup3) parts.push(this.selectedGroup3);
+    input.value = parts.join('-');
+  }
+
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) ---
+  async sharePackageQR(qrText, code, client) {
+    const container = document.getElementById('qr-canvas-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Generar QR en canvas con QRCode (qrcodejs)
+    new QRCode(container, {
+      text: qrText,
+      width: 300,
+      height: 300
+    });
+
+    setTimeout(async () => {
+      const canvas = container.querySelector('canvas');
+      if (!canvas) {
+        this.showToast('Error al generar la imagen QR.');
+        return;
+      }
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          this.showToast('No se pudo convertir el QR a imagen.');
           return;
         }
-      } catch (err) {
-        console.log("No se pudo compartir la imagen directamente:", err);
-      }
-    }
+        const file = new File([blob], `QR_${code}.png`, { type: 'image/png' });
 
-    // Respaldo por texto si el navegador no soporta archivos
-    const shareText = `Paquete: ${code} - Cliente: ${client} - Ubicación: ${location}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: `Paquete: ${code}`, text: shareText });
-      } catch (err) {
-        console.log('Intercambio cancelado o error:', err);
-      }
-    } else {
-      navigator.clipboard.writeText(shareText);
-      this.showToast('¡Información copiada al portapapeles!', 'success');
-    }
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: `Paquete: ${code}`,
+              text: `Código QR de paquete ${code} para el cliente ${client}.`,
+              files: [file]
+            });
+          } catch (err) {
+            console.log('Intercambio cancelado o error:', err);
+          }
+        } else {
+          this.showToast('Tu navegador no soporta compartir archivos directamente.', 'warning');
+        }
+      }, 'image/png');
+    }, 150);
   }
 
   renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
+    
+    // Renderizado visual auxiliar para la tarjeta usando qrcode-generator existente
     const qr = qrcode(4, 'L');
     qr.addData(pkg.qrCode);
     qr.make();
@@ -250,8 +334,8 @@ class App {
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}', '${pkg.location}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
-          📤 Compartir Código QR como Imagen
+        <button onclick="app.sharePackageQR('${pkg.qrCode}', '${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+          📤 Compartir Imagen QR (PNG)
         </button>
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">

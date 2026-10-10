@@ -74,7 +74,7 @@ class App {
     }, 4000);
   }
 
-  showSec(secId) {
+  async showSec(secId) {
     if (!auth.hasAccess(secId)) {
       this.showToast('Acceso denegado: No tiene permisos para este módulo.', 'warning');
       secId = 'sec-dashboard';

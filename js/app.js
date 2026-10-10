@@ -347,43 +347,62 @@ class App {
     `;
   }
 
-  async loadPrintNotifyView() {
+async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
+    const searchInput = document.getElementById('print-search-input');
+    if (searchInput) searchInput.value = ''; // Limpiar buscador al entrar a la sección
     if (!printCard) return;
-    const packages = await db.getAll('packages');
-    if (packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
-      return;
+
+    try {
+      const packages = await db.getAll('packages');
+      if (!packages || packages.length === 0) {
+        printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
+        return;
+      }
+      // Ordenar por fecha descendente para obtener el último registrado
+      packages.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      this.renderPrintCard(packages[0]);
+    } catch (err) {
+      console.error('Error al cargar la vista de notificaciones:', err);
+      printCard.innerHTML = '<p class="text-xs text-red-400 py-4">Error al cargar el último paquete.</p>';
     }
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    this.renderPrintCard(packages[0]);
   }
 
   async searchPrintPackage(query) {
     const q = (query || '').toLowerCase().trim();
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
-    const packages = await db.getAll('packages');
-    
-    if (!q) {
-      this.loadPrintNotifyView();
-      return;
+
+    try {
+      const packages = await db.getAll('packages');
+      if (!packages || packages.length === 0) {
+        printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes registrados.</p>';
+        return;
+      }
+
+      if (!q) {
+        packages.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        this.renderPrintCard(packages[0]);
+        return;
+      }
+
+      const filtered = packages.filter(p => {
+        const code = (p.code || '').toLowerCase();
+        const client = (p.client || '').toLowerCase();
+        return code.includes(q) || client.includes(q);
+      });
+
+      if (filtered.length === 0) {
+        printCard.innerHTML = `<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete para "${q}".</p>`;
+        return;
+      }
+
+      filtered.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      this.renderPrintCard(filtered[0]);
+    } catch (err) {
+      console.error('Error al filtrar paquetes en notificaciones:', err);
     }
-
-    const filtered = packages.filter(p => 
-      (p.code || '').toLowerCase().includes(q) || 
-      (p.client || '').toLowerCase().includes(q)
-    );
-
-    if (filtered.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
-      return;
-    }
-
-    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    this.renderPrintCard(filtered[0]);
   }
-
   sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {

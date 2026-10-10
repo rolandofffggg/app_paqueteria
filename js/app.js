@@ -268,7 +268,7 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) Y WHATSAPP ---
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR, RENDERIZAR Y FILTRAR ---
   async sharePackageQR(qrText, code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
@@ -364,18 +364,22 @@ class App {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
     const packages = await db.getAll('packages');
+    
     if (!q) {
       this.loadPrintNotifyView();
       return;
     }
+
     const filtered = packages.filter(p => 
       (p.code || '').toLowerCase().includes(q) || 
       (p.client || '').toLowerCase().includes(q)
     );
+
     if (filtered.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete.</p>';
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
       return;
     }
+
     filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     this.renderPrintCard(filtered[0]);
   }

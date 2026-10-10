@@ -268,13 +268,13 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR CON PADDING (MARCO BLANCO) Y SIN PREFIJOS ---
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR CON MARCO BLANCO (PADDING) PARA MODO OSCURO ---
   async sharePackageQR(code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
     container.innerHTML = '';
 
-    // Generar el QR usando exclusivamente el código exacto del paquete sin prefijos
+    // Generar el QR usando únicamente el código exacto del paquete (sin prefijos)
     new QRCode(container, {
       text: code,
       width: 260,
@@ -291,21 +291,21 @@ class App {
         return;
       }
 
-      // Crear un nuevo canvas con padding (marco blanco) para centrar el QR
-      const padding = 30; // Tamaño del marco blanco alrededor
+      // Crear un nuevo canvas con padding (marco blanco) para legibilidad en modo oscuro
+      const padding = 40; // Margen blanco amplio alrededor del código QR
       const paddedCanvas = document.createElement('canvas');
       paddedCanvas.width = originalCanvas.width + (padding * 2);
       paddedCanvas.height = originalCanvas.height + (padding * 2);
       const ctx = paddedCanvas.getContext('2d');
 
-      // Rellenar todo el fondo de blanco (Marco blanco)
+      // Rellenar todo el canvas de blanco puro (garantiza el contraste contra el modo oscuro)
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
 
-      // Dibujar el QR original centrado dentro del marco blanco
+      // Dibujar el QR centrado sobre el fondo blanco
       ctx.drawImage(originalCanvas, padding, padding);
 
-      // Convertir el canvas acolchado a Blob (PNG) para compartir
+      // Convertir a imagen PNG y activar Web Share API
       paddedCanvas.toBlob(async (blob) => {
         if (!blob) {
           this.showToast('No se pudo convertir el QR a imagen.');
@@ -335,7 +335,7 @@ class App {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    // Renderizado síncrono visual usando solo el código del paquete sin prefijos
+    // Generación síncrona visual usando solo el código del paquete sin prefijos
     const qr = qrcode(4, 'L');
     qr.addData(pkg.code);
     qr.make();

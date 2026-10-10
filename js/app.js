@@ -97,7 +97,7 @@ class App {
       }
     });
     if (secId === 'sec-reception') {
-      await this.loadLocationGroupsSettings(); // Carga y puebla los grupos actualizados
+      await this.loadLocationGroupsSettings();
     } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
@@ -268,13 +268,12 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) ---
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) Y WHATSAPP ---
   async sharePackageQR(qrText, code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
     container.innerHTML = '';
 
-    // Generar QR en canvas con QRCode (qrcodejs)
     new QRCode(container, {
       text: qrText,
       width: 300,
@@ -316,7 +315,6 @@ class App {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    // Renderizado visual auxiliar para la tarjeta usando qrcode-generator existente
     const qr = qrcode(4, 'L');
     qr.addData(pkg.qrCode);
     qr.make();
@@ -382,6 +380,35 @@ class App {
     this.renderPrintCard(filtered[0]);
   }
 
+  sendWhatsAppNotification(pkg, type) {
+    const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
+    if (!rawPhone) {
+      this.showToast('El paquete no tiene registrado un número telefónico.');
+      return;
+    }
+    let cleanPhone = rawPhone.replace(/\D/g, '');
+    if (cleanPhone.length === 8) {
+      cleanPhone = '591' + cleanPhone;
+    } else if (!cleanPhone.startsWith('591') || cleanPhone.length !== 11) {
+      this.showToast('Número inválido. Debe ser un número de Bolivia (8 dígitos).');
+      return;
+    }
+    const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
+    const message = 
+`--------------------------------------------------
+📦 Paquetería: ${company}
+--------------------------------------------------
+*Código:* ${pkg.code}
+*Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
+*Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
+*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
+--------------------------------------------------
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
+📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  }
+
   async updatePackageLocation(qrCode, newLocation) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
@@ -430,35 +457,6 @@ class App {
     this.selectedDeliveryPackage = null;
     this.loadDashboard();
     syncEngine.processQueue();
-  }
-
-  sendWhatsAppNotification(pkg, type) {
-    const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
-    if (!rawPhone) {
-      this.showToast('El paquete no tiene registrado un número telefónico.');
-      return;
-    }
-    let cleanPhone = rawPhone.replace(/\D/g, '');
-    if (cleanPhone.length === 8) {
-      cleanPhone = '591' + cleanPhone;
-    } else if (!cleanPhone.startsWith('591') || cleanPhone.length !== 11) {
-      this.showToast('Número inválido. Debe ser un número de Bolivia (8 dígitos).');
-      return;
-    }
-    const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
-    const message = 
-`--------------------------------------------------
-📦 Paquetería: ${company}
---------------------------------------------------
-*Código:* ${pkg.code}
-*Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
-*Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
-*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
---------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} / día
-📋 *Política:* Días de gracia: ${this.tariffs.graceDays} días. Penalización tras vencimiento: Bs. ${this.tariffs.dailyPenalty.toFixed(2)} / día.`;
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
   }
 
   async loadUsersList() {

@@ -268,14 +268,19 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) ---
-  async sharePackageQR(qrText, code, client) {
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) MEDIANTE WEB SHARE API ---
+  async sharePackageQR(qrText, code, client, phone) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
     container.innerHTML = '';
 
+    // Si posee teléfono, codifica el enlace wa.me en el QR, de lo contrario el texto del paquete
+    const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
+    const formattedPhone = cleanPhone.length === 8 ? '591' + cleanPhone : cleanPhone;
+    const shareText = formattedPhone ? `https://wa.me/${formattedPhone}?text=` + encodeURIComponent(`Hola ${client}, tu paquete ${code} ya está disponible en paquetería.`) : qrText;
+
     new QRCode(container, {
-      text: qrText,
+      text: shareText,
       width: 300,
       height: 300
     });
@@ -305,7 +310,9 @@ class App {
             console.log('Intercambio cancelado o error:', err);
           }
         } else {
-          this.showToast('Tu navegador no soporta compartir archivos directamente.', 'warning');
+          // Plan de respaldo (Fallback)
+          alert("Tu navegador no soporta compartir archivos directamente. Puedes guardar la imagen manteniendo presionada la pantalla.");
+          this.showToast('Intercambio no soportado directamente en este navegador.', 'warning');
         }
       }, 'image/png');
     }, 150);
@@ -334,7 +341,7 @@ class App {
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.qrCode || 'PT:' + pkg.code}', '${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button onclick="app.sharePackageQR('${pkg.qrCode || 'PT:' + pkg.code}', '${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}', '${pkg.phone || ''}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR (PNG)
         </button>
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 

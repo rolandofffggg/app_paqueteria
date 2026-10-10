@@ -135,4 +135,4 @@ class AuthManager {
   }
 }
 
-const auth = new AuthManager();uthManager();
+const auth = new AuthManager();

@@ -137,7 +137,7 @@ class App {
     const pkg = {
       packageId: pkgId,
       code: pkgCode,
-      qrCode: `PT:${pkgCode}`,
+      qrCode: pkgCode, // Únicamente el código de paquete sin prefijos
       client: clientName,
       phone: phoneClient,
       recipientPhone: phoneRecipient,
@@ -268,31 +268,45 @@ class App {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN (Blob) MEDIANTE WEB SHARE API ---
-  async sharePackageQR(qrText, code, client, phone) {
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR CON PADDING (MARCO BLANCO) Y SIN PREFIJOS ---
+  async sharePackageQR(code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
     container.innerHTML = '';
 
-    // Si posee teléfono, codifica el enlace wa.me en el QR, de lo contrario el texto del paquete
-    const cleanPhone = phone ? phone.replace(/\D/g, '') : '';
-    const formattedPhone = cleanPhone.length === 8 ? '591' + cleanPhone : cleanPhone;
-    const shareText = formattedPhone ? `https://wa.me/${formattedPhone}?text=` + encodeURIComponent(`Hola ${client}, tu paquete ${code} ya está disponible en paquetería.`) : qrText;
-
+    // Generar el QR usando exclusivamente el código exacto del paquete sin prefijos
     new QRCode(container, {
-      text: shareText,
-      width: 300,
-      height: 300
+      text: code,
+      width: 260,
+      height: 260,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
     });
 
     setTimeout(async () => {
-      const canvas = container.querySelector('canvas');
-      if (!canvas) {
+      const originalCanvas = container.querySelector('canvas');
+      if (!originalCanvas) {
         this.showToast('Error al generar la imagen QR.');
         return;
       }
 
-      canvas.toBlob(async (blob) => {
+      // Crear un nuevo canvas con padding (marco blanco) para centrar el QR
+      const padding = 30; // Tamaño del marco blanco alrededor
+      const paddedCanvas = document.createElement('canvas');
+      paddedCanvas.width = originalCanvas.width + (padding * 2);
+      paddedCanvas.height = originalCanvas.height + (padding * 2);
+      const ctx = paddedCanvas.getContext('2d');
+
+      // Rellenar todo el fondo de blanco (Marco blanco)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+
+      // Dibujar el QR original centrado dentro del marco blanco
+      ctx.drawImage(originalCanvas, padding, padding);
+
+      // Convertir el canvas acolchado a Blob (PNG) para compartir
+      paddedCanvas.toBlob(async (blob) => {
         if (!blob) {
           this.showToast('No se pudo convertir el QR a imagen.');
           return;
@@ -310,7 +324,6 @@ class App {
             console.log('Intercambio cancelado o error:', err);
           }
         } else {
-          // Plan de respaldo (Fallback)
           alert("Tu navegador no soporta compartir archivos directamente. Puedes guardar la imagen manteniendo presionada la pantalla.");
           this.showToast('Intercambio no soportado directamente en este navegador.', 'warning');
         }
@@ -322,9 +335,9 @@ class App {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    // Generación síncrona inmediata utilizando qrcode-generator
+    // Renderizado síncrono visual usando solo el código del paquete sin prefijos
     const qr = qrcode(4, 'L');
-    qr.addData(pkg.qrCode || `PT:${pkg.code}`);
+    qr.addData(pkg.code);
     qr.make();
     const qrImg = qr.createImgTag(4);
     
@@ -333,7 +346,7 @@ class App {
     
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
-      <div class="flex justify-center my-0.5">${qrImg}</div>
+      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
@@ -341,7 +354,7 @@ class App {
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.qrCode || 'PT:' + pkg.code}', '${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}', '${pkg.phone || ''}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR (PNG)
         </button>
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 

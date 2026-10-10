@@ -97,7 +97,7 @@ class App {
       }
     });
     if (secId === 'sec-reception') {
-      this.populateGroupSelects();
+      await this.loadLocationGroupsSettings(); // Carga y puebla los grupos actualizados
     } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {

@@ -10,15 +10,11 @@ class App {
       sizes: ['PEQUEÑO', 'MEDIANO', 'GRANDE'],
       colors: ['AMARILLO', 'ROJO', 'AZUL', 'NEGRO', 'BLANCO', 'VERDE', 'OTRO']
     };
-    // Estructura para Grupos Encadenados (Requerimiento 2)
     this.locationGroups = {
       group1: ['E1', 'E2', 'E3', 'E4', 'E5'],
       group2: ['PASILLO 1', 'PASILLO 2', 'PASILLO 3'],
       group3: ['ESTANTE A', 'ESTANTE B', 'ESTANTE C']
     };
-    this.selectedGroup1 = null;
-    this.selectedGroup2 = null;
-    this.selectedGroup3 = null;
   }
 
   async init() {
@@ -97,9 +93,7 @@ class App {
         btn.classList.add('text-slate-500');
       }
     });
-    if (secId === 'sec-reception') {
-      this.populateGroupSelects();
-    } else if (secId === 'sec-manage') {
+    if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
       this.loadPrintNotifyView();
@@ -108,7 +102,7 @@ class App {
     }
   }
 
-  // --- RECEPCIÓN Y FLEXIBILIZACIÓN DE CÓDIGO (Requerimiento 3) ---
+  // --- RECEPCIÓN DE PAQUETES ---
   async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
@@ -127,11 +121,11 @@ class App {
     const rawRecipientPhone = document.getElementById('rec-celular-dest').value;
     const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
     const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
-    const locationVal = document.getElementById('rec-ubicacion').value;
+    const locationVal = document.getElementById('rec-ubicacion').value.trim().toUpperCase();
     const keepClient = document.getElementById('chk-keep-client').checked;
     
-    if (!locationVal || locationVal.split('-').length < 3) {
-      this.showToast('Complete la selección de los tres grupos de ubicación.');
+    if (!locationVal) {
+      this.showToast('Ingrese la ubicación del paquete.');
       return;
     }
     const activeUser = auth.getUser();
@@ -162,16 +156,14 @@ class App {
       document.getElementById('rec-codigo').value = '';
       document.getElementById('rec-celular-dest').value = '';
       document.getElementById('rec-ubicacion').value = '';
-      this.populateGroupSelects();
     } else {
       document.getElementById('form-reception').reset();
-      this.populateGroupSelects();
     }
     this.loadDashboard();
     syncEngine.processQueue();
   }
 
-  // --- LÓGICA DE UBICACIÓN EN CASCADA (Requerimiento 2) ---
+  // --- CONFIGURACIÓN DE GRUPOS DE UBICACIÓN (Solo en Ajustes) ---
   async loadLocationGroupsSettings() {
     const saved = await db.get('settings', 'locationGroups');
     if (saved && saved.value) this.locationGroups = saved.value;
@@ -182,8 +174,6 @@ class App {
     if (g1El) g1El.value = this.locationGroups.group1 ? this.locationGroups.group1.join(', ') : '';
     if (g2El) g2El.value = this.locationGroups.group2 ? this.locationGroups.group2.join(', ') : '';
     if (g3El) g3El.value = this.locationGroups.group3 ? this.locationGroups.group3.join(', ') : '';
-    
-    this.populateGroupSelects();
   }
 
   async saveLocationGroupsSettings(e) {
@@ -198,94 +188,44 @@ class App {
     };
     await db.put('settings', { key: 'locationGroups', value: this.locationGroups });
     await db.put('syncQueue', { id: 'SYNC-SET-' + Date.now(), type: 'SYNC_SETTING', payload: { key: 'locationGroups', value: this.locationGroups } });
-    this.populateGroupSelects();
     this.showToast('¡Grupos de ubicación guardados y sincronizados!', 'success');
     syncEngine.processQueue();
   }
 
-  populateGroupSelects() {
-    const sel1 = document.getElementById('rec-grupo1');
-    const sel2 = document.getElementById('rec-grupo2');
-    const sel3 = document.getElementById('rec-grupo3');
-    
-    if (sel1) {
-      sel1.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
-        this.locationGroups.group1.map(val => `<option value="${val}">${val}</option>`).join('');
-    }
-    if (sel2) {
-      sel2.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
-      sel2.disabled = true;
-    }
-    if (sel3) {
-      sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
-      sel3.disabled = true;
-    }
-    this.selectedGroup1 = null;
-    this.selectedGroup2 = null;
-    this.selectedGroup3 = null;
-    this.updateCascadingLocationInput();
-  }
-
-  handleGroup1Change(val) {
-    this.selectedGroup1 = val;
-    this.selectedGroup2 = null;
-    this.selectedGroup3 = null;
-    
-    const sel2 = document.getElementById('rec-grupo2');
-    const sel3 = document.getElementById('rec-grupo3');
-    
-    sel2.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
-      this.locationGroups.group2.map(item => `<option value="${item}">${item}</option>`).join('');
-    sel2.disabled = false;
-    
-    sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>';
-    sel3.disabled = true;
-    
-    this.updateCascadingLocationInput();
-  }
-
-  handleGroup2Change(val) {
-    this.selectedGroup2 = val;
-    this.selectedGroup3 = null;
-    
-    const sel3 = document.getElementById('rec-grupo3');
-    sel3.innerHTML = '<option value="" disabled selected>Seleccionar...</option>' +
-      this.locationGroups.group3.map(item => `<option value="${item}">${item}</option>`).join('');
-    sel3.disabled = false;
-    
-    this.updateCascadingLocationInput();
-  }
-
-  handleGroup3Change(val) {
-    this.selectedGroup3 = val;
-    this.updateCascadingLocationInput();
-  }
-
-  updateCascadingLocationInput() {
-    const input = document.getElementById('rec-ubicacion');
-    if (!input) return;
-    let parts = [];
-    if (this.selectedGroup1) parts.push(this.selectedGroup1);
-    if (this.selectedGroup2) parts.push(this.selectedGroup2);
-    if (this.selectedGroup3) parts.push(this.selectedGroup3);
-    input.value = parts.join('-');
-  }
-
-  // --- MÓDULO "NOTIFICAR": COMPARTIR Y ESPACIADOS (Requerimiento 1) ---
+  // --- MÓDULO "NOTIFICAR": COMPARTIR QR COMO IMAGEN ---
   async sharePackageQR(code, client, location) {
-    const shareData = {
-      title: `Paquete: ${code}`,
-      text: `Código QR de paquete ${code} para el cliente ${client} ubicado en ${location}.`,
-      url: window.location.href
-    };
+    const printCard = document.getElementById('print-card-target');
+    const imgEl = printCard ? printCard.querySelector('img') : null;
+
+    if (imgEl && imgEl.src && navigator.canShare) {
+      try {
+        const response = await fetch(imgEl.src);
+        const blob = await response.blob();
+        const file = new File([blob], `QR_${code}.png`, { type: "image/png" });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `Código QR - Paquete ${code}`,
+            text: `Código QR del paquete ${code} para el cliente ${client} ubicado en ${location}.`,
+            files: [file],
+          });
+          return;
+        }
+      } catch (err) {
+        console.log("No se pudo compartir la imagen directamente:", err);
+      }
+    }
+
+    // Respaldo por texto si el navegador no soporta archivos
+    const shareText = `Paquete: ${code} - Cliente: ${client} - Ubicación: ${location}`;
     if (navigator.share) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({ title: `Paquete: ${code}`, text: shareText });
       } catch (err) {
-        console.log('Error al compartir:', err);
+        console.log('Intercambio cancelado o error:', err);
       }
     } else {
-      navigator.clipboard.writeText(`${code} - ${client} - Ubicación: ${location}`);
+      navigator.clipboard.writeText(shareText);
       this.showToast('¡Información copiada al portapapeles!', 'success');
     }
   }
@@ -311,7 +251,7 @@ class App {
       </div>
       <div class="space-y-1.5 pt-0.5">
         <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}', '${pkg.location}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
-          📤 Compartir Código QR / Info
+          📤 Compartir Código QR como Imagen
         </button>
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
@@ -358,7 +298,6 @@ class App {
     this.renderPrintCard(filtered[0]);
   }
 
-  // --- ACTUALIZACIÓN DE UBICACIÓN Y REUBICACIÓN ---
   async updatePackageLocation(qrCode, newLocation) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
@@ -386,7 +325,6 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- ENTREGA Y COBRO CON AUDITORÍA DE USUARIO ---
   async confirmDelivery() {
     if (!this.selectedDeliveryPackage) return;
     const nombre = document.getElementById('del-retira-nombre').value.trim();
@@ -410,7 +348,6 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- NOTIFICACIÓN WHATSAPP (+591) ---
   sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {
@@ -440,7 +377,6 @@ class App {
     window.open(url, '_blank');
   }
 
-  // --- GESTIÓN DE USUARIOS ---
   async loadUsersList() {
     if (!auth.isAdmin()) return;
     const container = document.getElementById('users-list');
@@ -553,7 +489,6 @@ class App {
     document.getElementById('usr-form-title').textContent = 'Crear Nuevo Usuario';
   }
 
-  // --- DASHBOARD ---
   async loadDashboard() {
     const packages = await db.getAll('packages');
     const todayStr = new Date().toISOString().split('T')[0];
@@ -599,7 +534,6 @@ class App {
     `).join('');
   }
 
-  // --- CONFIGURACIONES Y PARÁMETROS ---
   async loadBrandSettings() {
     const saved = await db.get('settings', 'brand');
     this.companyName = saved && saved.value ? saved.value : '';

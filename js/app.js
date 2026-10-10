@@ -101,7 +101,7 @@ class App {
     } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
-      this.loadPrintNotifyView();
+      await this.loadPrintNotifyView();
     } else if (secId === 'sec-users') {
       this.loadUsersList();
     }

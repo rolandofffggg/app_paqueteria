@@ -101,7 +101,7 @@ class AuthManager {
 
   hasAccess(tabId) {
     if (!this.currentUser) return false;
-    const adminOnlyTabs = ['sec-settings', 'sec-users'];
+    const adminOnlyTabs = ['sec-settings', 'sec-users', 'sec-manage'];
     if (adminOnlyTabs.includes(tabId) && !this.isAdmin()) {
       return false;
     }

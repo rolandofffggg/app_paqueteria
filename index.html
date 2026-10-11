@@ -120,7 +120,7 @@
 
       <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <div class="relative">
-          <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente *" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+          <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
           <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>
         </div>
 
@@ -140,27 +140,29 @@
           </div>
         </div>
 
-        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Características del Paquete</label>
-        <div class="grid grid-cols-3 gap-2">
-          <div>
-            <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-              <option value="" disabled selected>Contenido</option>
-            </select>
-          </div>
-          <div>
-            <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-              <option value="" disabled selected>Tamaño</option>
-            </select>
-          </div>
-          <div>
-            <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
-              <option value="" disabled selected>Color</option>
-            </select>
+        <div class="mt-4">
+          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Características del Paquete</label>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+                <option value="" disabled selected>Contenido</option>
+              </select>
+            </div>
+            <div>
+              <select id="rec-tamano" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+                <option value="" disabled selected>Tamaño</option>
+              </select>
+            </div>
+            <div>
+              <select id="rec-color" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
+                <option value="" disabled selected>Color</option>
+              </select>
+            </div>
           </div>
         </div>
 
         <!-- Listas desplegables encadenadas -->
-        <div>
+        <div class="mt-4">
           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ubicación del Paquete</label>
           <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Grupo1-Grupo2-Grupo3)" class="w-full px-3 py-2 border rounded-lg bg-slate-50 font-mono font-bold text-blue-600 text-xs mb-2 text-center">
           <div class="grid grid-cols-3 gap-1.5">
@@ -209,7 +211,7 @@
       <h2 class="text-base font-bold text-slate-700">Inventario y Reubicación</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-loc-input" placeholder="Código Ubicación *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-bold">
+          <input type="text" id="inv-loc-input" placeholder="Código Ubicación" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-bold">
           <button onclick="app.setFixedLocationManual()" class="col-span-3 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Fijar</button>
           <button onclick="scanner.scanLocation()" class="col-span-3 bg-slate-800 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
         </div>
@@ -220,7 +222,7 @@
         </div>
 
         <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-pkg-input" placeholder="Código Paquete *" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-mono font-bold">
+          <input type="text" id="inv-pkg-input" placeholder="Código Paquete" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-bold">
           <button onclick="app.processInventoryManual()" id="btn-add-inv-pkg" disabled class="col-span-3 bg-emerald-600 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Verificar</button>
           <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="col-span-3 bg-slate-800 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
         </div>
@@ -239,7 +241,7 @@
       <h2 class="text-base font-bold text-slate-700">Entrega de Paquete</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <div class="flex gap-2">
-          <input type="text" id="del-search-code" placeholder="Código de Paquete *" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-mono font-bold">
+          <input type="text" id="del-search-code" placeholder="Código de Paquete" class="flex-1 px-3 py-1.5 border rounded-lg text-xs font-bold">
           <button onclick="app.searchDeliveryManual()" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0">Buscar</button>
           <button onclick="scanner.scanForDelivery()" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
         </div>

@@ -128,8 +128,8 @@ class App {
     const locationVal = document.getElementById('rec-ubicacion').value;
     const keepClient = document.getElementById('chk-keep-client').checked;
     
-    if (!locationVal || locationVal.split('-').length < 3) {
-      this.showToast('Complete la selección de los tres grupos de ubicación.');
+    if (!locationVal || locationVal.split('-').length < 2) {
+      this.showToast('Seleccione al menos el grupo 1 y 2 para definir ubicación.');
       return;
     }
     const activeUser = auth.getUser();

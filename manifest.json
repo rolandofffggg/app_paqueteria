@@ -1,11 +1,14 @@
 {
+  "id": "com.paqueteria.app",
   "name": "Paquetería PWA",
   "short_name": "Paquetería",
   "description": "Sistema de Control de Paquetería y Logística",
   "start_url": "./index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/app_paqueteria/icons/icon-192.png",

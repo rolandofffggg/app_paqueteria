@@ -217,34 +217,30 @@
     </section>
 
     <!-- Ubicaciones View -->
-    <section id="sec-inventory" class="space-y-3 hidden">
-      <h2 class="text-base font-bold text-slate-700">Inventario y Reubicación</h2>
-      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-loc-input" placeholder="Código Ubicación" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-bold">
-          <button onclick="app.setFixedLocationManual()" class="col-span-3 bg-blue-600 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Fijar</button>
-          <button onclick="scanner.scanLocation()" class="col-span-3 bg-slate-800 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
-        </div>
-
-        <div class="flex items-center justify-between bg-slate-50 p-2 rounded-lg border text-xs">
-          <span class="font-bold text-slate-500">UBICACIÓN FIJA:</span>
-          <span id="inv-fixed-loc" class="font-mono font-bold text-blue-600">NINGUNA</span>
-        </div>
-
-        <div class="grid grid-cols-12 gap-1.5 items-center">
-          <input type="text" id="inv-pkg-input" placeholder="Código Paquete" class="col-span-6 px-2.5 py-1.5 border rounded-lg text-xs font-bold">
-          <button onclick="app.processInventoryManual()" id="btn-add-inv-pkg" disabled class="col-span-3 bg-emerald-600 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">Verificar</button>
-          <button onclick="scanner.scanInventoryPackage()" id="btn-scan-pkg" disabled class="col-span-3 bg-slate-800 disabled:bg-slate-300 text-white py-1.5 rounded-lg text-xs font-semibold text-center">📷 Scan</button>
-        </div>
-      </div>
-
-      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
-        <h3 class="text-xs font-bold text-slate-500 uppercase mb-1.5">Paquetes Verificados</h3>
-        <ul id="inv-scanned-list" class="divide-y divide-slate-100 text-xs">
-          <li class="py-2 text-slate-400 text-center">Fije la ubicación para comenzar.</li>
-        </ul>
-      </div>
-    </section>
+        <section id="sec-inventory" class="space-y-3 hidden">
+          <h2 class="text-base font-bold text-slate-700">Inventario y Reubicación</h2>
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
+            
+            <!-- Campo de Ubicación Fija editable manualmente -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-slate-500 uppercase">Ubicación Fija (Destino)</label>
+              <input type="text" id="inv-fixed-loc" placeholder="Ej. E1-PASILLO1-ESTANTE A" class="w-full px-2.5 py-2 border rounded-lg text-xs font-bold uppercase font-mono text-blue-600 bg-slate-50 focus:bg-white">
+            </div>
+    
+            <!-- Ingreso y verificación de paquetes -->
+            <div class="grid grid-cols-12 gap-1.5 items-center pt-1">
+              <input type="text" id="inv-pkg-input" placeholder="Código Paquete" class="col-span-9 px-2.5 py-2 border rounded-lg text-xs font-bold">
+              <button onclick="app.processInventoryManual()" class="col-span-3 bg-emerald-600 text-white py-2 rounded-lg text-xs font-semibold text-center">Verificar</button>
+            </div>
+          </div>
+    
+          <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase mb-1.5">Paquetes Verificados</h3>
+            <ul id="inv-scanned-list" class="divide-y divide-slate-100 text-xs">
+              <li class="py-2 text-slate-400 text-center">Ingrese una ubicación y escanee/verifique paquetes.</li>
+            </ul>
+          </div>
+        </section>
 
     <!-- Entrega View -->
     <section id="sec-delivery" class="space-y-3 hidden">

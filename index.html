@@ -124,7 +124,7 @@
       </div>
 
       <form id="form-reception" onsubmit="app.savePackage(event)" class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
-        <div>
+        <div class="space-y-2.5">
           <div class="relative">
             <input type="text" id="rec-cliente" required autocomplete="off" oninput="app.handleClientAutocomplete(this.value)" placeholder="Cliente" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold">
             <div id="client-suggestions" class="hidden absolute left-0 right-0 top-full bg-white border border-slate-200 rounded-b-lg shadow-lg z-30 max-h-40 overflow-y-auto divide-y text-xs"></div>

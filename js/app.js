@@ -417,7 +417,7 @@ class App {
     this.renderPrintCard(filtered[0]);
   }
 
-  async updatePackageLocation(qrCode, newLocation) {
+async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
     if (!pkg) {
@@ -434,14 +434,23 @@ class App {
     pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
+    
     const list = document.getElementById('inv-scanned-list');
     const li = document.createElement('li');
     li.className = 'py-1.5 flex justify-between font-mono';
     li.innerHTML = `<span>Code: <strong>${pkg.code}</strong> -> ${newLocation}</span> <span class="text-emerald-600 font-bold">✔ OK</span>`;
     list.prepend(li);
+    
     this.showToast(`Ubicación de ${pkg.code} actualizada a ${newLocation}`, 'success');
     this.loadDashboard();
     syncEngine.processQueue();
+
+    // 🚀 Si se indicó auto-abrir, reactivamos el escáner de inventario automáticamente
+    if (autoOpenScanner) {
+      setTimeout(() => {
+        scanner.scanInventoryPackage();
+      }, 300); // Pequeña pausa de 300ms para que cierre el modal anterior y abra el nuevo fluido
+    }
   }
 
   async confirmDelivery() {

@@ -59,13 +59,23 @@ class ScannerManager {
         target.dispatchEvent(new Event('input'));
       }
     } 
-    else if (this.currentMode === 'FIX_LOC') {
-      document.getElementById('inv-fixed-loc').textContent = cleanText;
-      document.getElementById('btn-scan-pkg').disabled = false;
+else if (this.currentMode === 'FIX_LOC') {
+      const locInput = document.getElementById('inv-fixed-loc');
+      if (locInput) {
+        locInput.value = cleanText;
+        // Llamamos a la función de App para habilitar los botones de verificación
+        app.handleFixedLocationInput(cleanText);
+      }
       document.getElementById('inv-scanned-list').innerHTML = '';
     } 
     else if (this.currentMode === 'INV_PKG') {
-      const fixedLoc = document.getElementById('inv-fixed-loc').textContent;
+      const fixedLocInput = document.getElementById('inv-fixed-loc');
+      const fixedLoc = fixedLocInput ? fixedLocInput.value.trim() : '';
+      
+      if (!fixedLoc) {
+        app.showToast('Ingrese o escanee una ubicación fija primero.');
+        return;
+      }
       app.updatePackageLocation(cleanText, fixedLoc);
     }
     else if (this.currentMode === 'DELIVERY') {

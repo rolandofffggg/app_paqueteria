@@ -915,21 +915,36 @@ class App {
     syncEngine.processQueue();
   }
 
-    async processInventoryManual() {
-        const code = document.getElementById('inv-pkg-input').value.trim();
-        // Leemos directamente el texto ingresado en el input de ubicación fija
-        const fixedLoc = document.getElementById('inv-fixed-loc').value.trim().toUpperCase();
-        if (!fixedLoc) { 
-          this.showToast('Ingrese o escriba una ubicación fija válida.'); 
-          return; 
-        }
-        if (!code) { 
-          this.showToast('Ingrese un código de paquete.'); 
-          return; 
-        }
-        await this.updatePackageLocation(code, fixedLoc);
-        document.getElementById('inv-pkg-input').value = '';
-      }
+handleFixedLocationInput(val) {
+    const cleanVal = val.trim();
+    const btnAdd = document.getElementById('btn-add-inv-pkg');
+    const btnScan = document.getElementById('btn-scan-pkg');
+    
+    if (cleanVal.length > 0) {
+      if (btnAdd) btnAdd.disabled = false;
+      if (btnScan) btnScan.disabled = false;
+    } else {
+      if (btnAdd) btnAdd.disabled = true;
+      if (btnScan) btnScan.disabled = true;
+    }
+  }
+
+  processInventoryManual() {
+    const code = document.getElementById('inv-pkg-input').value.trim();
+    const fixedLocInput = document.getElementById('inv-fixed-loc');
+    const fixedLoc = fixedLocInput ? fixedLocInput.value.trim() : '';
+
+    if (!fixedLoc) { 
+      this.showToast('Ingrese o escanee una ubicación fija primero.'); 
+      return; 
+    }
+    if (!code) { 
+      this.showToast('Ingrese un código de paquete.'); 
+      return; 
+    }
+    this.updatePackageLocation(code, fixedLoc);
+    document.getElementById('inv-pkg-input').value = '';
+  }
 
   async searchDeliveryManual() {
     const code = document.getElementById('del-search-code').value.trim();

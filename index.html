@@ -149,7 +149,13 @@
 
         <br>
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Características del Paquete</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase">Características del Paquete</label>
+            <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" id="chk-keep-category" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+              <span class="text-[10px] font-medium">Fijar Características</span>
+            </label>
+          </div>
           <div class="grid grid-cols-3 gap-2">
             <div>
               <select id="rec-categoria" class="w-full px-2 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 text-xs font-bold bg-white">
@@ -172,7 +178,13 @@
         <!-- Listas desplegables encadenadas -->
         <br>
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ubicación del Paquete</label>
+          <div class="flex justify-between items-center mb-1">
+            <label class="block text-[10px] font-bold text-slate-500 uppercase">Ubicación del Paquete</label>
+            <label class="flex items-center gap-1 text-xs text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" id="chk-keep-location" class="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+              <span class="text-[10px] font-medium">Fijar Ubicación</span>
+            </label>
+          </div>
           <input type="text" id="rec-ubicacion" readonly required placeholder="Ubicación (Grupo1-Grupo2-Grupo3)" class="w-full px-2.5 py-2 border rounded-lg bg-slate-50 font-bold text-blue-600 text-xs mb-2 text-center">
           <div class="grid grid-cols-3 gap-1.5">
             <div>

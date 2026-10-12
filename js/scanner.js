@@ -68,7 +68,7 @@ else if (this.currentMode === 'FIX_LOC') {
       }
       document.getElementById('inv-scanned-list').innerHTML = '';
     } 
-    else if (this.currentMode === 'INV_PKG') {
+else if (this.currentMode === 'INV_PKG') {
       const fixedLocInput = document.getElementById('inv-fixed-loc');
       const fixedLoc = fixedLocInput ? fixedLocInput.value.trim() : '';
       
@@ -76,7 +76,8 @@ else if (this.currentMode === 'FIX_LOC') {
         app.showToast('Ingrese o escanee una ubicación fija primero.');
         return;
       }
-      app.updatePackageLocation(cleanText, fixedLoc);
+      // Pasamos true para que abra automáticamente el escáner de nuevo
+      app.updatePackageLocation(cleanText, fixedLoc, true);
     }
     else if (this.currentMode === 'DELIVERY') {
       app.prepareDelivery(cleanText);

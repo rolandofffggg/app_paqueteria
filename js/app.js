@@ -127,6 +127,8 @@ class App {
     const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
     const locationVal = document.getElementById('rec-ubicacion').value;
     const keepClient = document.getElementById('chk-keep-client').checked;
+    const keepCategory = document.getElementById('chk-keep-category').checked;
+    const keepLocation = document.getElementById('chk-keep-location').checked;
     
     if (!locationVal || locationVal.split('-').length < 2) {
       this.showToast('Seleccione al menos el grupo 1 y 2 para definir ubicación.');
@@ -156,13 +158,23 @@ class App {
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
     this.showToast(`✅ Paquete ${pkg.code} registrado con éxito.`, 'success');
     
-    if (keepClient) {
-      document.getElementById('rec-codigo').value = '';
-      document.getElementById('rec-celular-dest').value = '';
+    // Limpieza selectiva basada en los checkboxes de retención
+    document.getElementById('rec-codigo').value = '';
+    document.getElementById('rec-celular-dest').value = '';
+
+    if (!keepClient) {
+      document.getElementById('rec-cliente').value = '';
+      document.getElementById('rec-celular').value = '';
+    }
+
+    if (!keepCategory) {
+      document.getElementById('rec-categoria').selectedIndex = 0;
+      document.getElementById('rec-tamano').selectedIndex = 0;
+      document.getElementById('rec-color').selectedIndex = 0;
+    }
+
+    if (!keepLocation) {
       document.getElementById('rec-ubicacion').value = '';
-      this.populateGroupSelects();
-    } else {
-      document.getElementById('form-reception').reset();
       this.populateGroupSelects();
     }
     this.loadDashboard();

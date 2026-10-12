@@ -221,10 +221,9 @@
       <h2 class="text-base font-bold text-slate-700">Inventario y Reubicación</h2>
       <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5">
         <div>
-          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ubicación Fija (Manual o QR)</label>
-          <div class="flex gap-2">
-            <input type="text" id="inv-fixed-loc" oninput="app.handleFixedLocationInput(this.value)" placeholder="Ej. E1-PASILLO1-ESTANTE A" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono font-bold text-blue-600 text-xs">
-            <button type="button" onclick="scanner.scanLocation()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 Scan</button>
+           <div class="flex gap-1.5">
+            <input type="text" id="inv-fixed-loc" oninput="app.handleFixedLocationInput(this.value)" placeholder="Ubicación Ej.Grupo1-Grupo2-Grupo3" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600 text-xs">
+            <button type="button" onclick="scanner.scanLocation()" class="bg-slate-800 text-white px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 Scan</button>
           </div>
         </div>
 

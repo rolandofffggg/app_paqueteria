@@ -125,15 +125,16 @@ class App {
     const rawRecipientPhone = document.getElementById('rec-celular-dest').value;
     const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
     const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
-    const locationVal = document.getElementById('rec-ubicacion').value;
+    let locationVal = document.getElementById('rec-ubicacion').value.trim();
     const keepClient = document.getElementById('chk-keep-client').checked;
     const keepCategory = document.getElementById('chk-keep-category').checked;
     const keepLocation = document.getElementById('chk-keep-location').checked;
     
-    if (!locationVal || locationVal.split('-').length < 2) {
-      this.showToast('Seleccione al menos el grupo 1 y 2 para definir ubicación.');
-      return;
+    // Si la ubicación está vacía, le asignamos un texto por defecto opcional
+    if (!locationVal) {
+      locationVal = 'SIN UBICACIÓN';
     }
+    
     const activeUser = auth.getUser();
     const pkgId = 'PKG-' + Date.now();
     const pkg = {
@@ -329,12 +330,12 @@ class App {
           try {
             await navigator.share({
               title: `Paquete: ${code}`,
-              text: `Código QR de paquete ${code} para el cliente ${client}.`,
+              text: code,
               files: [file]
             });
           } catch (err) {
             console.log('Intercambio cancelado o error:', err);
-          }
+          }   
         } else {
           alert("Tu navegador no soporta compartir archivos directamente. Puedes guardar la imagen manteniendo presionada la pantalla.");
           this.showToast('Intercambio no soportado directamente en este navegador.', 'warning');
@@ -973,9 +974,20 @@ handleFixedLocationInput(val) {
     await this.prepareDelivery(code);
   }
 
-  async prepareDelivery(qrCode) {
+async prepareDelivery(qrCode) {
+    const cleanQuery = (qrCode || '').toUpperCase().trim();
+    if (!cleanQuery) {
+      this.showToast('Ingrese un código válido.');
+      return;
+    }
+
     const packages = await db.getAll('packages');
-    const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
+    // Comparamos convirtiendo ambos a mayúsculas de manera indistinta
+    const pkg = packages.find(p => 
+      ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
+       (p.code || '').toUpperCase().trim() === cleanQuery)
+    );
+
     if (!pkg || pkg.status === 'ENTREGADO') {
       this.showToast('Paquete no disponible para entrega.');
       return;

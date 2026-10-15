@@ -431,8 +431,19 @@ class App {
   }
 
 async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
+    const cleanQuery = (qrCode || '').toUpperCase().trim();
+    if (!cleanQuery) {
+      this.showToast('Código de paquete inválido.');
+      return;
+    }
+
     const packages = await db.getAll('packages');
-    const pkg = packages.find(p => p.qrCode === qrCode || p.code === qrCode);
+    // Buscamos comparando en mayúsculas de forma indistinta
+    const pkg = packages.find(p => 
+      ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
+       (p.code || '').toUpperCase().trim() === cleanQuery)
+    );
+
     if (!pkg) {
       this.showToast('Paquete no encontrado.');
       return;

@@ -41,6 +41,7 @@ class App {
       { name: 'Plata', hex: '#94A3B8' },
       { name: 'Antracita', hex: '#334155' },
       { name: 'Beige', hex: '#F5F5DC' },
+      { name: 'Caqui', hex: '#B8860B' },
       { name: 'Chocolate', hex: '#5C4033' },
       { name: 'Arena', hex: '#D2B48C' }
     ];
@@ -102,7 +103,7 @@ class App {
     }, 4000);
   }
 
-async showSec(secId) {
+  async showSec(secId) {
     if (!auth.hasAccess(secId)) {
       this.showToast('Acceso denegado: No tiene permisos para este módulo.', 'warning');
       secId = 'sec-dashboard';
@@ -162,7 +163,6 @@ async showSec(secId) {
     const keepCategory = document.getElementById('chk-keep-category').checked;
     const keepLocation = document.getElementById('chk-keep-location').checked;
     
-    // Si la ubicación está vacía, le asignamos un texto por defecto opcional
     if (!locationVal) {
       locationVal = 'SIN UBICACIÓN';
     }
@@ -172,7 +172,7 @@ async showSec(secId) {
     const pkg = {
       packageId: pkgId,
       code: pkgCode,
-      qrCode: pkgCode, // Únicamente el código de paquete sin prefijos
+      qrCode: pkgCode,
       client: clientName,
       phone: phoneClient,
       recipientPhone: phoneRecipient,
@@ -191,7 +191,6 @@ async showSec(secId) {
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
     this.showToast(`✅ Paquete ${pkg.code} registrado con éxito.`, 'success');
     
-    // Limpieza selectiva basada en los checkboxes de retención
     document.getElementById('rec-codigo').value = '';
     document.getElementById('rec-celular-dest').value = '';
 
@@ -313,13 +312,11 @@ async showSec(secId) {
     input.value = parts.join('-');
   }
 
-  // --- MÓDULO "NOTIFICAR": COMPARTIR QR CON MARCO BLANCO (PADDING) PARA MODO OSCURO ---
   async sharePackageQR(code, client) {
     const container = document.getElementById('qr-canvas-container');
     if (!container) return;
     container.innerHTML = '';
 
-    // Generar el QR usando únicamente el código exacto del paquete (sin prefijos)
     new QRCode(container, {
       text: code,
       width: 260,
@@ -336,21 +333,16 @@ async showSec(secId) {
         return;
       }
 
-      // Crear un nuevo canvas con padding (marco blanco) para legibilidad en modo oscuro
-      const padding = 40; // Margen blanco amplio alrededor del código QR
+      const padding = 40;
       const paddedCanvas = document.createElement('canvas');
       paddedCanvas.width = originalCanvas.width + (padding * 2);
       paddedCanvas.height = originalCanvas.height + (padding * 2);
       const ctx = paddedCanvas.getContext('2d');
 
-      // Rellenar todo el canvas de blanco puro (garantiza el contraste contra el modo oscuro)
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
-
-      // Dibujar el QR centrado sobre el fondo blanco
       ctx.drawImage(originalCanvas, padding, padding);
 
-      // Convertir a imagen PNG y activar Web Share API
       paddedCanvas.toBlob(async (blob) => {
         if (!blob) {
           this.showToast('No se pudo convertir el QR a imagen.');
@@ -380,7 +372,6 @@ async showSec(secId) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    // Generación síncrona visual usando solo el código del paquete sin prefijos
     const qr = qrcode(4, 'L');
     qr.addData(pkg.code);
     qr.make();
@@ -462,7 +453,7 @@ async showSec(secId) {
     this.renderPrintCard(filtered[0]);
   }
 
-async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
+  async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Código de paquete inválido.');
@@ -470,7 +461,6 @@ async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     }
 
     const packages = await db.getAll('packages');
-    // Buscamos comparando en mayúsculas de forma indistinta
     const pkg = packages.find(p => 
       ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
        (p.code || '').toUpperCase().trim() === cleanQuery)
@@ -501,11 +491,10 @@ async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     this.loadDashboard();
     syncEngine.processQueue();
 
-    // 🚀 Si se indicó auto-abrir, reactivamos el escáner de inventario automáticamente
     if (autoOpenScanner) {
       setTimeout(() => {
         scanner.scanInventoryPackage();
-      }, 300); // Pequeña pausa de 300ms para que cierre el modal anterior y abra el nuevo fluido
+      }, 300);
     }
   }
 
@@ -980,7 +969,7 @@ async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     syncEngine.processQueue();
   }
 
-handleFixedLocationInput(val) {
+  handleFixedLocationInput(val) {
     const cleanVal = val.trim();
     const btnAdd = document.getElementById('btn-add-inv-pkg');
     const btnScan = document.getElementById('btn-scan-pkg');
@@ -1017,7 +1006,7 @@ handleFixedLocationInput(val) {
     await this.prepareDelivery(code);
   }
 
-async prepareDelivery(qrCode) {
+  async prepareDelivery(qrCode) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Ingrese un código válido.');
@@ -1025,7 +1014,6 @@ async prepareDelivery(qrCode) {
     }
 
     const packages = await db.getAll('packages');
-    // Comparamos convirtiendo ambos a mayúsculas de manera indistinta
     const pkg = packages.find(p => 
       ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
        (p.code || '').toUpperCase().trim() === cleanQuery)
@@ -1071,7 +1059,8 @@ async prepareDelivery(qrCode) {
     syncEngine.processQueue();
   }
 
-initLabelsModule() {
+  // --- MÉTODOS DEL MÓDULO DE ETIQUETAS ---
+  initLabelsModule() {
     const paletteContainer = document.getElementById('colorPalette');
     if (!paletteContainer || paletteContainer.children.length > 0) return;
     
@@ -1220,7 +1209,6 @@ initLabelsModule() {
         card.style.width = '2.3cm';
         card.style.height = '3.7cm';
 
-        // 1. Logotipo
         const logoContainer = document.createElement('div');
         logoContainer.className = 'label-logo-container h-[16%] flex items-center justify-center p-[1px] bg-white';
         if (this.logoDataUrl) {
@@ -1236,14 +1224,12 @@ initLabelsModule() {
         }
         card.appendChild(logoContainer);
 
-        // 2. Cinta / Cabecera
         const header = document.createElement('div');
         header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
         header.style.backgroundColor = this.selectedColor;
         header.textContent = headerText;
         card.appendChild(header);
 
-        // 3. QR Central
         const qrContainer = document.createElement('div');
         qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0';
         const qrBox = document.createElement('div');
@@ -1254,7 +1240,6 @@ initLabelsModule() {
         qrContainer.appendChild(qrBox);
         card.appendChild(qrContainer);
 
-        // 4. Footer
         const footer = document.createElement('div');
         footer.className = 'label-footer flex items-center justify-center pb-[2px] mt-[-2px] bg-white';
         const codeText = document.createElement('div');
@@ -1292,11 +1277,6 @@ initLabelsModule() {
     }
   }
 
-    // Ejecutar impresión del navegador
-    window.print();
-  }
-
-  // Método para generar y descargar el PDF con las dimensiones correctas
   downloadLabelsPDF() {
     const container = document.getElementById('previewContainer');
     const sheetTypeSelect = document.getElementById('sheetType');
@@ -1309,7 +1289,6 @@ initLabelsModule() {
 
     this.showToast('Generando PDF, por favor espere...', 'success');
 
-    // Configuración de dimensiones según Carta (Letter) u Oficio (Legal)
     const formatType = sheetType === 'oficio' ? 'legal' : 'letter';
 
     const options = {
@@ -1317,19 +1296,4 @@ initLabelsModule() {
       filename:     `Etiquetas_${sheetType.toUpperCase()}_${Date.now()}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'cm', format: formatType, orientation: 'portrait' }
-    };
-
-    // Ejecutar la exportación a PDF usando html2pdf
-    html2pdf().from(container).set(options).save().then(() => {
-      this.showToast('¡PDF descargado con éxito!', 'success');
-    }).catch(err => {
-      console.error('Error al generar PDF:', err);
-      this.showToast('Error al generar el archivo PDF.', 'error');
-    });
-  }
-
-}
-
-const app = new App();
-document.addEventListener('DOMContentLoaded', () => app.init());
+      jsPDF:        { unit: 'cm', format: formatType, orientation: 'portrait'

@@ -15,6 +15,8 @@
   <link rel="stylesheet" href="./css/app.css">
   <!-- Librería QRCode.js para generación de códigos QR de etiquetas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Librería html2pdf.js para exportar el contenedor de etiquetas a PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
 
@@ -416,9 +418,10 @@
           </div>
         </div>
 
-        <div class="actions-bar flex gap-2 pt-1">
+        <div class="actions-bar flex flex-col sm:flex-row gap-2 pt-1">
           <button class="btn-action flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-blue-700 transition" id="btnGenerate">Generar Etiquetas</button>
-          <button class="btn-action btn-print flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-emerald-700 transition" onclick="window.print()">Imprimir Hojas</button>
+          <button class="btn-action btn-print flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-emerald-700 transition" onclick="app.printLabels()">🖨️ Imprimir Hojas</button>
+          <button class="btn-action flex-1 bg-purple-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-purple-700 transition" onclick="app.downloadLabelsPDF()">📥 Descargar PDF</button>
         </div>
       </div>
 

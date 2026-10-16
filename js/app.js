@@ -1292,7 +1292,72 @@ initLabelsModule() {
       }, 50);
     }
   }
-  
+// Método inteligente para imprimir según el tipo de hoja seleccionado (Carta u Oficio)
+  printLabels() {
+    const sheetTypeSelect = document.getElementById('sheetType');
+    const sheetType = sheetTypeSelect ? sheetTypeSelect.value : 'carta';
+    
+    // Crear una regla de estilo dinámica para la orientación e impresión física exacta
+    let printStyleEl = document.getElementById('dynamic-print-style');
+    if (!printStyleEl) {
+      printStyleEl = document.createElement('style');
+      printStyleEl.id = 'dynamic-print-style';
+      document.head.appendChild(printStyleEl);
+    }
+
+    if (sheetType === 'oficio') {
+      printStyleEl.innerHTML = `
+        @media print {
+          @page { size: legal; margin: 0mm; }
+          .sheet { width: 21.59cm !important; height: 35.56cm !important; page-break-after: always; break-after: page; }
+        }
+      `;
+    } else {
+      printStyleEl.innerHTML = `
+        @media print {
+          @page { size: letter; margin: 0mm; }
+          .sheet { width: 21.59cm !important; height: 27.94cm !important; page-break-after: always; break-after: page; }
+        }
+      `;
+    }
+
+    // Ejecutar impresión del navegador
+    window.print();
+  }
+
+  // Método para generar y descargar el PDF con las dimensiones correctas
+  downloadLabelsPDF() {
+    const container = document.getElementById('previewContainer');
+    const sheetTypeSelect = document.getElementById('sheetType');
+    const sheetType = sheetTypeSelect ? sheetTypeSelect.value : 'carta';
+
+    if (!container || container.children.length === 0) {
+      this.showToast('No hay etiquetas generadas para exportar.', 'warning');
+      return;
+    }
+
+    this.showToast('Generando PDF, por favor espere...', 'success');
+
+    // Configuración de dimensiones según Carta (Letter) u Oficio (Legal)
+    const formatType = sheetType === 'oficio' ? 'legal' : 'letter';
+
+    const options = {
+      margin:       0,
+      filename:     `Etiquetas_${sheetType.toUpperCase()}_${Date.now()}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:        { unit: 'cm', format: formatType, orientation: 'portrait' }
+    };
+
+    // Ejecutar la exportación a PDF usando html2pdf
+    html2pdf().from(container).set(options).save().then(() => {
+      this.showToast('¡PDF descargado con éxito!', 'success');
+    }).catch(err => {
+      console.error('Error al generar PDF:', err);
+      this.showToast('Error al generar el archivo PDF.', 'error');
+    });
+  }
+
 }
 
 const app = new App();

@@ -18,6 +18,35 @@ class App {
     this.selectedGroup1 = null;
     this.selectedGroup2 = null;
     this.selectedGroup3 = null;
+    this.paletteColors = [
+      { name: 'Carmesí', hex: '#DC143C' },
+      { name: 'Burdeos / Vino', hex: '#800020' },
+      { name: 'Celeste', hex: '#38BDF8' },
+      { name: 'Marino', hex: '#1E3A8A' },
+      { name: 'Turquesa', hex: '#0D9488' },
+      { name: 'Azul eléctrico', hex: '#2563EB' },
+      { name: 'Dorado', hex: '#CA8A04' },
+      { name: 'Mostaza', hex: '#EAB308' },
+      { name: 'Verde claro', hex: '#4ADE80' },
+      { name: 'Esmeralda', hex: '#059669' },
+      { name: 'Oliva', hex: '#65A30D' },
+      { name: 'Verde militar', hex: '#4D7C0F' },
+      { name: 'Naranja', hex: '#F97316' },
+      { name: 'Lila', hex: '#C084FC' },
+      { name: 'Magenta', hex: '#D946EF' },
+      { name: 'Fucsia', hex: '#EC4899' },
+      { name: 'Rosa pastel', hex: '#F472B6' },
+      { name: 'Blanco', hex: '#FFFFFF' },
+      { name: 'Negro', hex: '#000000' },
+      { name: 'Plata', hex: '#94A3B8' },
+      { name: 'Antracita', hex: '#334155' },
+      { name: 'Beige', hex: '#F5F5DC' },
+      { name: 'Caqui', hex: '#B8860B' },
+      { name: 'Chocolate', hex: '#5C4033' },
+      { name: 'Arena', hex: '#D2B48C' }
+    ];
+    this.selectedColor = '#1E3A8A';
+    this.logoDataUrl = '';
   }
 
   async init() {
@@ -74,18 +103,19 @@ class App {
     }, 4000);
   }
 
-  async showSec(secId) {
+async showSec(secId) {
     if (!auth.hasAccess(secId)) {
       this.showToast('Acceso denegado: No tiene permisos para este módulo.', 'warning');
       secId = 'sec-dashboard';
     }
-    const sections = ['sec-dashboard', 'sec-reception', 'sec-print-notify', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings', 'sec-users'];
+    const sections = ['sec-dashboard', 'sec-reception', 'sec-print-notify', 'sec-inventory', 'sec-delivery', 'sec-manage', 'sec-settings', 'sec-users', 'sec-labels'];
     sections.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
     const targetSec = document.getElementById(secId);
     if (targetSec) targetSec.classList.remove('hidden');
+    
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
       if (btn.getAttribute('onclick')?.includes(`'${secId}'`)) {
@@ -96,6 +126,7 @@ class App {
         btn.classList.add('text-slate-500');
       }
     });
+
     if (secId === 'sec-reception') {
       await this.loadLocationGroupsSettings();
     } else if (secId === 'sec-manage') {
@@ -104,6 +135,8 @@ class App {
       this.loadPrintNotifyView();
     } else if (secId === 'sec-users') {
       this.loadUsersList();
+    } else if (secId === 'sec-labels') {
+      this.initLabelsModule();
     }
   }
 
@@ -1038,6 +1071,228 @@ async prepareDelivery(qrCode) {
   syncNow() {
     syncEngine.processQueue();
   }
+
+initLabelsModule() {
+    const paletteContainer = document.getElementById('colorPalette');
+    if (!paletteContainer || paletteContainer.children.length > 0) return;
+    
+    paletteContainer.innerHTML = '';
+    this.paletteColors.forEach(c => {
+      const div = document.createElement('div');
+      div.className = `color-option w-7 h-7 rounded cursor-pointer border-2 transition-transform hover:scale-110 ${c.hex === this.selectedColor ? 'border-slate-900 shadow-md ring-2 ring-white' : 'border-transparent'}`;
+      div.style.backgroundColor = c.hex;
+      div.title = c.name;
+      div.onclick = () => {
+        document.querySelectorAll('.color-option').forEach(el => {
+          el.classList.remove('border-slate-900', 'shadow-md', 'ring-2', 'ring-white');
+          el.classList.add('border-transparent');
+        });
+        div.classList.remove('border-transparent');
+        div.classList.add('border-slate-900', 'shadow-md', 'ring-2', 'ring-white');
+        this.selectedColor = c.hex;
+        document.documentElement.style.setProperty('--primary-color', this.selectedColor);
+      };
+      paletteContainer.appendChild(div);
+    });
+
+    const logoInput = document.getElementById('logoFile');
+    if (logoInput) {
+      logoInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            this.logoDataUrl = event.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    const btnGen = document.getElementById('btnGenerate');
+    if (btnGen) {
+      btnGen.onclick = () => this.generateLabels();
+    }
+    this.generateLabels();
+  }
+
+  convertToCode(n) {
+    if (n < 1 || n > 19144736) return "FUERA DE RANGO";
+    if (n <= 260000) {
+      let idx = n - 1;
+      let num = idx % 10000;
+      let l1 = Math.floor(idx / 10000);
+      return String.fromCharCode(65 + l1) + String(num).padStart(4, '0');
+    }
+    if (n <= 936000) {
+      let idx = n - 260001;
+      let num = idx % 1000;
+      let lettersIdx = Math.floor(idx / 1000);
+      let l1 = Math.floor(lettersIdx / 26);
+      let l2 = lettersIdx % 26;
+      return String.fromCharCode(65 + l1) + String.fromCharCode(65 + l2) + String(num).padStart(3, '0');
+    }
+    if (n <= 2693600) {
+      let idx = n - 936001;
+      let num = idx % 100;
+      let lettersIdx = Math.floor(idx / 100);
+      let l1 = Math.floor(lettersIdx / 676);
+      let rem = lettersIdx % 676;
+      let l2 = Math.floor(rem / 26);
+      let l3 = rem % 26;
+      return String.fromCharCode(65 + l1) + String.fromCharCode(65 + l2) + String.fromCharCode(65 + l3) + String(num).padStart(2, '0');
+    }
+    if (n <= 7263360) {
+      let idx = n - 2693601;
+      let num = idx % 10;
+      let lettersIdx = Math.floor(idx / 10);
+      let l1 = Math.floor(lettersIdx / 17576);
+      let rem1 = lettersIdx % 17576;
+      let l2 = Math.floor(rem1 / 676);
+      let rem2 = rem1 % 676;
+      let l3 = Math.floor(rem2 / 26);
+      let l4 = rem2 % 26;
+      return String.fromCharCode(65 + l1) + String.fromCharCode(65 + l2) + String.fromCharCode(65 + l3) + String.fromCharCode(65 + l4) + String(num).padStart(1, '0');
+    }
+    if (n <= 19144736) {
+      let idx = n - 7263361;
+      let l1 = Math.floor(idx / 456976);
+      let rem1 = idx % 456976;
+      let l2 = Math.floor(rem1 / 17576);
+      let rem2 = rem1 % 17576;
+      let l3 = Math.floor(rem2 / 676);
+      let rem3 = rem2 % 676;
+      let l4 = Math.floor(rem3 / 26);
+      let l5 = rem3 % 26;
+      return String.fromCharCode(65 + l1) + String.fromCharCode(65 + l2) + String.fromCharCode(65 + l3) + String.fromCharCode(65 + l4) + String.fromCharCode(65 + l5);
+    }
+    return "FUERA DE RANGO";
+  }
+
+  generateLabels() {
+    const startInput = document.getElementById('inputStart');
+    const endInput = document.getElementById('inputEnd');
+    const headerInput = document.getElementById('headerText');
+    const sheetTypeInput = document.getElementById('sheetType');
+    const container = document.getElementById('previewContainer');
+
+    if (!startInput || !endInput || !container) return;
+
+    const start = parseInt(startInput.value);
+    const end = parseInt(endInput.value);
+    const headerText = headerInput ? headerInput.value : 'LA CLAVE';
+    const sheetType = sheetTypeInput ? sheetTypeInput.value : 'carta';
+
+    container.innerHTML = '';
+
+    if (isNaN(start) || isNaN(end) || start < 1 || end > 19144736 || start > end) {
+      container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">FUERA DE RANGO (Debe estar entre 1 y 19,144,736)</div>`;
+      return;
+    }
+
+    let labelsPerRow = 8;
+    let rowsPerCarta = 7;
+    let rowsPerOficio = 8;
+    let maxRows = sheetType === 'carta' ? rowsPerCarta : rowsPerOficio;
+    let labelsPerSheet = labelsPerRow * maxRows;
+
+    let totalLabels = (end - start) + 1;
+    let currentLabelIndex = start;
+    let totalSheets = Math.ceil(totalLabels / labelsPerSheet);
+
+    for (let s = 0; s < totalSheets; s++) {
+      const sheetDiv = document.createElement('div');
+      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex justify-center`;
+      sheetDiv.style.width = '21.59cm';
+      sheetDiv.style.minHeight = sheetType === 'carta' ? '27.94cm' : '35.56cm';
+      sheetDiv.style.padding = sheetType === 'carta' ? '0.5cm 0.3cm' : '0.8cm 0.3cm';
+
+      const gridDiv = document.createElement('div');
+      gridDiv.className = 'grid-labels grid gap-[1.5px] justify-center align-content-start';
+      gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
+
+      let labelsInThisSheet = Math.min(labelsPerSheet, totalLabels - (s * labelsPerSheet));
+
+      for (let i = 0; i < labelsInThisSheet; i++) {
+        let codeVal = this.convertToCode(currentLabelIndex);
+
+        const card = document.createElement('div');
+        card.className = 'label-card border-[0.5px] border-slate-500 flex flex-col bg-white overflow-hidden relative';
+        card.style.width = '2.3cm';
+        card.style.height = '3.7cm';
+
+        // 1. Logotipo
+        const logoContainer = document.createElement('div');
+        logoContainer.className = 'label-logo-container h-[16%] flex items-center justify-center p-[1px] bg-white';
+        if (this.logoDataUrl) {
+          const img = document.createElement('img');
+          img.src = this.logoDataUrl;
+          img.className = 'label-logo max-h-full max-w-[2.1cm] object-contain';
+          logoContainer.appendChild(img);
+        } else {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'label-logo-placeholder text-[4.5pt] text-slate-400';
+          placeholder.textContent = '[ LOGO ]';
+          logoContainer.appendChild(placeholder);
+        }
+        card.appendChild(logoContainer);
+
+        // 2. Cinta / Cabecera
+        const header = document.createElement('div');
+        header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
+        header.style.backgroundColor = this.selectedColor;
+        header.textContent = headerText;
+        card.appendChild(header);
+
+        // 3. QR Central
+        const qrContainer = document.createElement('div');
+        qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0';
+        const qrBox = document.createElement('div');
+        qrBox.className = 'qr-code-box flex items-center justify-center';
+        qrBox.style.width = '1.9cm';
+        qrBox.style.height = '1.9cm';
+        qrBox.id = `qr-mod-${s}-${i}-${currentLabelIndex}`;
+        qrContainer.appendChild(qrBox);
+        card.appendChild(qrContainer);
+
+        // 4. Footer
+        const footer = document.createElement('div');
+        footer.className = 'label-footer flex items-center justify-center pb-[2px] mt-[-2px] bg-white';
+        const codeText = document.createElement('div');
+        codeText.className = 'label-code-text text-[11pt] font-semibold text-black tracking-[0.2px] leading-none';
+        codeText.textContent = codeVal;
+        footer.appendChild(codeText);
+        card.appendChild(footer);
+
+        gridDiv.appendChild(card);
+        currentLabelIndex++;
+      }
+
+      sheetDiv.appendChild(gridDiv);
+      container.appendChild(sheetDiv);
+
+      setTimeout(() => {
+        let sheetStartIdx = start + (s * labelsPerSheet);
+        for (let i = 0; i < labelsInThisSheet; i++) {
+          let cIdx = sheetStartIdx + i;
+          let codeVal = this.convertToCode(cIdx);
+          let elId = `qr-mod-${s}-${i}-${cIdx}`;
+          let element = document.getElementById(elId);
+          if (element) {
+            new QRCode(element, {
+              text: codeVal,
+              width: 90,
+              height: 90,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        }
+      }, 50);
+    }
+  }
+  
 }
 
 const app = new App();

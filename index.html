@@ -13,6 +13,8 @@
   <!-- Librería QRCode para generar Canvas y compartir imagen en Blob -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <link rel="stylesheet" href="./css/app.css">
+  <!-- Librería QRCode.js para generación de códigos QR de etiquetas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="h-full flex flex-col text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
 
@@ -377,6 +379,57 @@
       </div>
     </div>
 
+<!-- Módulo de Generación de Etiquetas -->
+    <section id="sec-labels" class="space-y-3 hidden">
+      <h2 class="text-base font-bold text-slate-700">Generador de Etiquetas</h2>
+      <div class="control-panel bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="inputStart">Número Inicial (Inicio):</label>
+            <input type="number" id="inputStart" value="1" min="1" max="19144736" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
+          </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="inputEnd">Número Final (Fin):</label>
+            <input type="number" id="inputEnd" value="40" min="1" max="19144736" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
+          </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="headerText">Texto de Encabezado:</label>
+            <input type="text" id="headerText" value="LA CLAVE" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
+          </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="sheetType">Tipo de Hoja:</label>
+            <select id="sheetType" class="w-full px-2.5 py-1.5 border rounded-lg font-bold bg-white">
+              <option value="carta">Carta (21.59 x 27.94 cm)</option>
+              <option value="oficio">Oficio (21.59 x 35.56 cm)</option>
+            </select>
+          </div>
+          <div class="form-group md:col-span-2">
+            <label class="block font-bold text-slate-600 mb-0.5">Logotipo Institucional (PNG / JPG):</label>
+            <input type="file" id="logoFile" accept="image/png, image/jpeg" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="block font-bold text-slate-600 mb-1 text-xs">Color de Cinta / Encabezado:</label>
+          <div class="color-palette grid grid-cols-8 gap-1.5" id="colorPalette">
+            <!-- Generado por JS -->
+          </div>
+        </div>
+
+        <div class="actions-bar flex gap-2 pt-1">
+          <button class="btn-action flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-blue-700 transition" id="btnGenerate">Generar Etiquetas</button>
+          <button class="btn-action btn-print flex-1 bg-emerald-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-emerald-700 transition" onclick="window.print()">Imprimir Hojas</button>
+        </div>
+      </div>
+
+      <!-- Vista Previa de Páginas con Scroll -->
+      <div class="preview-wrapper w-full overflow-x-auto pb-4">
+        <div class="preview-container flex flex-col items-center gap-4 min-w-max" id="previewContainer">
+          <!-- Hojas y etiquetas generadas dinámicamente -->
+        </div>
+      </div>
+    </section>
+    
     <!-- Ajustes View (Solo ADMIN) -->
     <section id="sec-settings" class="space-y-4 hidden">
       <!-- Datos de Marca -->
@@ -506,8 +559,9 @@
   </main>
 
   <!-- Navigation Bar Mobile -->
+<!-- Navigation Bar Mobile -->
   <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 h-14 shadow-lg">
-    <div class="max-w-md mx-auto h-full grid grid-cols-8 text-center">
+    <div class="max-w-md mx-auto h-full grid grid-cols-9 text-center">
       <button onclick="app.showSec('sec-dashboard')" class="nav-btn active flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
         <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
         <span class="text-[7px] leading-tight mt-0.5">Dashboard</span>
@@ -527,6 +581,10 @@
       <button onclick="app.showSec('sec-delivery')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
         <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
         <span class="text-[7px] leading-tight mt-0.5">Entrega</span>
+      </button>
+      <button onclick="app.showSec('sec-labels')" class="nav-btn flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>
+        <span class="text-[7px] leading-tight mt-0.5">Etiquetas</span>
       </button>
       <button onclick="app.showSec('sec-manage')" class="nav-btn nav-admin-only flex flex-col justify-center items-center text-slate-500 hover:text-blue-600">
         <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>

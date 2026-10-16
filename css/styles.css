@@ -32,29 +32,38 @@
   animation: toastIn 0.3s ease-out forwards;
 }
 
+/* Reglas de impresión y exportación a PDF unificadas y optimizadas */
 @media print {
   @page {
     size: letter;
-    margin: 0mm; 
+    margin: 0mm;
   }
   @page oficio {
     size: legal;
     margin: 0mm;
   }
+  
   body {
-    background: none;
+    background: white !important;
   }
-  header, nav, .control-panel {
+
+  header, 
+  nav, 
+  .control-panel, 
+  .actions-bar {
     display: none !important;
   }
+
   .preview-wrapper {
-    overflow: visible;
-    padding: 0;
+    overflow: visible !important;
+    padding: 0 !important;
   }
+
   .preview-container {
-    gap: 0;
-    margin: 0;
+    gap: 0 !important;
+    margin: 0 !important;
   }
+
   .sheet {
     box-shadow: none !important;
     margin: 0 !important;

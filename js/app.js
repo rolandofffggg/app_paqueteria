@@ -1180,11 +1180,10 @@ class App {
       sheetDiv.style.padding = sheetType === 'carta' ? '0.5cm 0.3cm' : '0.8cm 0.3cm';
 
       const gridDiv = document.createElement('div');
+      // Define el mismo espacio tanto para columnas como para filas (por ejemplo, 2px uniformes)
       gridDiv.className = 'grid-labels grid justify-center align-content-start';
       gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
-      // Define aquí el espacio exacto que deseas entre filas y columnas (ejemplo: 2mm para ambos)
-      gridDiv.style.columnGap = '2mm';
-      gridDiv.style.rowGap = '2mm';
+      gridDiv.style.gap = `2px`; // Cambia este valor (en px, mm o cm) para que separación horizontal y vertical sean idénticas
 
       let labelsInThisSheet = Math.min(labelsPerSheet, totalLabels - (s * labelsPerSheet));
 

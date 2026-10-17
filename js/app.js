@@ -453,7 +453,7 @@ async updateRecipientPhoneInNotify(packageId) {
     this.sendWhatsAppNotification(pkg, type);
   }
   
-  async loadPrintNotifyView() {
+async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
     
@@ -467,7 +467,7 @@ async updateRecipientPhoneInNotify(packageId) {
     }
     
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    this.renderPrintCard(packages[0]);
+    this.renderPrintCard(packages[0].packageId);
   }
 
   async searchPrintPackage(query) {

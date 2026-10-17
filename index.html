@@ -239,8 +239,8 @@
         <!-- Fila 1: Ubicación Fija -->
         <div>
            <div class="flex gap-1.5 items-center">
-            <input type="text" id="inv-fixed-loc" oninput="app.handleFixedLocationInput(this.value)" placeholder="Ubicación Ej.Grupo1-Grupo2-Grupo3" class="w-full px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600 text-xs">
-            <button type="button" onclick="scanner.scanLocation()" class="bg-slate-800 text-white px-2.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
+            <input type="text" id="inv-fixed-loc" oninput="app.handleFixedLocationInput(this.value)" placeholder="Ubicación Ej.Grupo1-Grupo2-Grupo3" class="col-span-7 px-2.5 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-bold text-blue-600 text-xs">
+            <button type="button" onclick="scanner.scanLocation()" class="col-span-3 bg-slate-800 disabled:bg-slate-300 text-white py-2 rounded-lg text-xs font-semibold text-center">📷 QR</button>
            </div>
         </div>
 
@@ -381,7 +381,6 @@
       </div>
     </div>
 
-<!-- Módulo de Generación de Etiquetas -->
 <!-- Módulo de Generación de Etiquetas -->
     <section id="sec-labels" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Generador de Etiquetas</h2>

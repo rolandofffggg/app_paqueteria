@@ -365,7 +365,7 @@ class App {
     }, 150);
   }
 
-  renderPrintCard(pkg) {
+renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
@@ -380,9 +380,20 @@ class App {
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
-      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
+      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1.5 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        
+        <!-- Campo para registrar/editar Celular Destinatario -->
+        <div>
+          <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Celular Destinatario:</label>
+          <div class="flex gap-1.5">
+            <input type="tel" id="notify-recipient-phone" value="${pkg.recipientPhone || ''}" placeholder="Ej. 70000000" class="flex-1 px-2 py-1 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <button onclick="app.updateRecipientPhoneInNotify('${pkg.packageId}')" class="bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-blue-700 transition shrink-0">
+              💾 Guardar
+            </button>
+          </div>
+        </div>
+
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
@@ -402,6 +413,31 @@ class App {
     `;
   }
 
+  async updateRecipientPhoneInNotify(packageId) {
+    const input = document.getElementById('notify-recipient-phone');
+    if (!input) return;
+    
+    const cleanPhone = input.value.replace(/\D/g, '');
+    const pkg = await db.get('packages', packageId);
+    
+    if (!pkg) {
+      this.showToast('Error: Paquete no encontrado.');
+      return;
+    }
+
+    const activeUser = auth.getUser();
+    pkg.recipientPhone = cleanPhone;
+    pkg.updatedAt = new Date().toISOString();
+    pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
+
+    await db.put('packages', pkg);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
+
+    this.showToast('✅ Celular del destinatario actualizado.', 'success');
+    this.renderPrintCard(pkg); // Re-renderiza la tarjeta para refrescar botones y datos
+    syncEngine.processQueue();
+  }
+  
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;

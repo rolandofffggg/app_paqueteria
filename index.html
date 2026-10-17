@@ -382,6 +382,7 @@
     </div>
 
 <!-- Módulo de Generación de Etiquetas -->
+<!-- Módulo de Generación de Etiquetas -->
     <section id="sec-labels" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Generador de Etiquetas</h2>
       <div class="control-panel bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
@@ -401,29 +402,22 @@
           <div class="form-group">
             <label class="block font-bold text-slate-600 mb-0.5" for="sheetType">Tipo de Hoja:</label>
             <select id="sheetType" class="w-full px-2.5 py-1.5 border rounded-lg font-bold bg-white">
-              <option value="carta">Carta (21.59 x 27.94 cm)</option>
-              <option value="oficio">Oficio (21.59 x 35.56 cm)</option>
+              <option value="carta">Carta (21.59 x 27.94 cm) - 56 etq.</option>
+              <option value="oficio">Oficio (21.59 x 35.56 cm) - 64 etq.</option>
             </select>
           </div>
-          <div class="form-group md:col-span-2">
-            <label class="block font-bold text-slate-600 mb-0.5">Logotipo Institucional (PNG / JPG):</label>
-            <input type="file" id="logoFile" accept="image/png, image/jpeg" class="w-full text-xs text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-          </div>
         </div>
-
         <div class="form-group">
           <label class="block font-bold text-slate-600 mb-1 text-xs">Color de Cinta / Encabezado:</label>
           <div class="color-palette grid grid-cols-8 gap-1.5" id="colorPalette">
             <!-- Generado por JS -->
           </div>
         </div>
-
         <div class="actions-bar flex flex-col sm:flex-row gap-2 pt-1">
           <button class="btn-action flex-1 bg-blue-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-blue-700 transition" id="btnGenerate">Generar Etiquetas</button>
           <button class="btn-action flex-1 bg-purple-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-purple-700 transition" onclick="app.downloadLabelsPDF()">📥 Descargar PDF</button>
         </div>
       </div>
-
       <!-- Vista Previa de Páginas con Scroll -->
       <div class="preview-wrapper w-full overflow-x-auto pb-4">
         <div class="preview-container flex flex-col items-center gap-4 min-w-max" id="previewContainer">

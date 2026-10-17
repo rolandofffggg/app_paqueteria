@@ -36,6 +36,18 @@ class ScannerManager {
     await this.open('Escanear Ubicación Fija');
   }
 
+  async scanForPrintNotify() {
+    this.start('Escanear Paquete', (decodedText) => {
+      const cleanCode = decodedText.trim();
+      const input = document.getElementById('print-search-input');
+      if (input) {
+        input.value = cleanCode;
+      }
+      app.searchPrintPackage(cleanCode);
+      this.close();
+    });
+  }
+
   async scanInventoryPackage() {
     this.currentMode = 'INV_PKG';
     await this.open('Escanear Paquete para Inventario');

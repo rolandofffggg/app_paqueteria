@@ -554,7 +554,7 @@ renderPrintCard(pkg) {
     syncEngine.processQueue();
   }
 
-  sendWhatsAppNotification(pkg, type) {
+sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {
       this.showToast('El paquete no tiene registrado un número telefónico.');
@@ -577,7 +577,7 @@ renderPrintCard(pkg) {
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días. ;
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;
     
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

@@ -437,11 +437,14 @@ async updateRecipientPhoneInNotify(packageId) {
     pkg.recipientPhone = cleanPhone;
     pkg.updatedAt = new Date().toISOString();
     pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
+    
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
     this.showToast('✅ Celular del destinatario actualizado.', 'success');
-    // Recargamos la tarjeta utilizando directamente el ID de la base de datos
-    await this.renderPrintCard(pkg.packageId);
+    
+    // CORRECCIÓN CRÍTICA: Volvemos a renderizar la tarjeta pasando el objeto actualizado completo
+    await this.renderPrintCard(pkg); 
+    
     syncEngine.processQueue();
   }
   async sendWhatsAppNotificationById(packageId, type) {

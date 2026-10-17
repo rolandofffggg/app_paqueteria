@@ -1221,13 +1221,16 @@ generateLabels() {
         header.textContent = headerText;
         card.appendChild(header);
 
-        // 3. Código QR Central
+        // 3. Código QR Central (Blindado para dispositivos móviles)
         const qrContainer = document.createElement('div');
-        qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0';
+        qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0 overflow-hidden';
+        
         const qrBox = document.createElement('div');
         qrBox.className = 'qr-code-box flex items-center justify-center';
         qrBox.style.width = '1.9cm';
         qrBox.style.height = '1.9cm';
+        qrBox.style.maxWidth = '1.9cm';
+        qrBox.style.maxHeight = '1.9cm';
         qrBox.id = `qr-mod-${s}-${i}-${currentLabelIndex}`;
         qrContainer.appendChild(qrBox);
         card.appendChild(qrContainer);
@@ -1256,10 +1259,11 @@ generateLabels() {
           let elId = `qr-mod-${s}-${i}-${cIdx}`;
           let element = document.getElementById(elId);
           if (element) {
+            element.innerHTML = ''; // Limpiar por si acaso
             new QRCode(element, {
               text: codeVal,
-              width: 90,
-              height: 90,
+              width: 75,  // Reducido ligeramente para asegurar que nunca desborde en móviles
+              height: 75,
               colorDark: "#000000",
               colorLight: "#ffffff",
               correctLevel: QRCode.CorrectLevel.M

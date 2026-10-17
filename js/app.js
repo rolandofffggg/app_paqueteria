@@ -365,17 +365,28 @@ class App {
     }, 150);
   }
 
-renderPrintCard(pkg) {
+async renderPrintCard(pkgOrId) {
     const printCard = document.getElementById('print-card-target');
-    if (!printCard || !pkg) return;
+    if (!printCard) return;
+
+    // Si recibimos un ID o un objeto, nos aseguramos de obtener la versión más reciente de la BD
+    let pkg = pkgOrId;
+    if (typeof pkgOrId === 'string') {
+      pkg = await db.get('packages', pkgOrId);
+    }
+    if (!pkg) return;
     
     const qr = qrcode(4, 'L');
     qr.addData(pkg.code);
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    const hasClientPhone = !!pkg.phone;
-    const hasRecipientPhone = !!pkg.recipientPhone;
+    // Validar teléfonos limpios asegurando que existan
+    const clientPhoneClean = pkg.phone ? pkg.phone.replace(/\D/g, '') : '';
+    const recipientPhoneClean = pkg.recipientPhone ? pkg.recipientPhone.replace(/\D/g, '') : '';
+    
+    const hasClientPhone = clientPhoneClean.length >= 8;
+    const hasRecipientPhone = recipientPhoneClean.length >= 8;
     
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
@@ -401,11 +412,11 @@ renderPrintCard(pkg) {
         <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
+        <button onclick="app.sendWhatsAppNotificationById('${pkg.packageId}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
+        <button onclick="app.sendWhatsAppNotificationById('${pkg.packageId}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
           class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Destinatario
         </button>
@@ -413,29 +424,33 @@ renderPrintCard(pkg) {
     `;
   }
 
-  async updateRecipientPhoneInNotify(packageId) {
+async updateRecipientPhoneInNotify(packageId) {
     const input = document.getElementById('notify-recipient-phone');
     if (!input) return;
-    
     const cleanPhone = input.value.replace(/\D/g, '');
     const pkg = await db.get('packages', packageId);
-    
     if (!pkg) {
       this.showToast('Error: Paquete no encontrado.');
       return;
     }
-
     const activeUser = auth.getUser();
     pkg.recipientPhone = cleanPhone;
     pkg.updatedAt = new Date().toISOString();
     pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
-
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
-
     this.showToast('✅ Celular del destinatario actualizado.', 'success');
-    this.renderPrintCard(pkg); // Re-renderiza la tarjeta para refrescar botones y datos
+    // Recargamos la tarjeta utilizando directamente el ID de la base de datos
+    await this.renderPrintCard(pkg.packageId);
     syncEngine.processQueue();
+  }
+  async sendWhatsAppNotificationById(packageId, type) {
+    const pkg = await db.get('packages', packageId);
+    if (!pkg) {
+      this.showToast('Paquete no encontrado.');
+      return;
+    }
+    this.sendWhatsAppNotification(pkg, type);
   }
   
   async loadPrintNotifyView() {

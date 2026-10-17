@@ -41,7 +41,6 @@ class App {
       { name: 'Plata', hex: '#94A3B8' },
       { name: 'Antracita', hex: '#334155' },
       { name: 'Beige', hex: '#F5F5DC' },
-      { name: 'Caqui', hex: '#B8860B' },
       { name: 'Chocolate', hex: '#5C4033' },
       { name: 'Arena', hex: '#D2B48C' }
     ];

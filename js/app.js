@@ -115,7 +115,6 @@ class App {
     });
     const targetSec = document.getElementById(secId);
     if (targetSec) targetSec.classList.remove('hidden');
-    
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
       if (btn.getAttribute('onclick')?.includes(`'${secId}'`)) {
@@ -126,7 +125,6 @@ class App {
         btn.classList.add('text-slate-500');
       }
     });
-
     if (secId === 'sec-reception') {
       await this.loadLocationGroupsSettings();
     } else if (secId === 'sec-manage') {
@@ -341,6 +339,7 @@ class App {
 
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
+
       ctx.drawImage(originalCanvas, padding, padding);
 
       paddedCanvas.toBlob(async (blob) => {
@@ -1059,7 +1058,7 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- MÉTODOS DEL MÓDULO DE ETIQUETAS ---
+  // --- MÓDULO DE ETIQUETAS ---
   initLabelsModule() {
     const paletteContainer = document.getElementById('colorPalette');
     if (!paletteContainer || paletteContainer.children.length > 0) return;
@@ -1296,4 +1295,17 @@ class App {
       filename:     `Etiquetas_${sheetType.toUpperCase()}_${Date.now()}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'cm', format: formatType, orientation: 'portrait'
+      jsPDF:        { unit: 'cm', format: formatType, orientation: 'portrait' }
+    };
+
+    html2pdf().from(container).set(options).save().then(() => {
+      this.showToast('¡PDF descargado con éxito!', 'success');
+    }).catch(err => {
+      console.error('Error al generar PDF:', err);
+      this.showToast('Error al generar el archivo PDF.', 'error');
+    });
+  }
+}
+
+const app = new App();
+document.addEventListener('DOMContentLoaded', () => app.init());

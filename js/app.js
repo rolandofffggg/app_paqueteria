@@ -1140,7 +1140,7 @@ class App {
     return "FUERA DE RANGO";
   }
 
-  generateLabels() {
+generateLabels() {
     const startInput = document.getElementById('inputStart');
     const endInput = document.getElementById('inputEnd');
     const headerInput = document.getElementById('headerText');
@@ -1161,7 +1161,6 @@ class App {
       return;
     }
 
-    // Configuración exacta de cuadrícula por tipo de hoja
     let labelsPerRow = 8;
     let rowsPerCarta = 7;   // Carta: 7 filas x 8 = 56 etiquetas
     let rowsPerOficio = 8;  // Oficio: 8 filas x 8 = 64 etiquetas
@@ -1174,18 +1173,23 @@ class App {
 
     for (let s = 0; s < totalSheets; s++) {
       const sheetDiv = document.createElement('div');
-      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-center`;
+      // CAMBIO CLAVE: Se usa 'justify-start' en lugar de 'justify-center' para alinear al extremo superior
+      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-start`;
       sheetDiv.style.width = '21.59cm';
-      sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm'; // Usar height en lugar de min-height fija el contenedor
-      sheetDiv.style.padding = '0cm'; // Eliminamos padding interno para controlarlo con el grid
+      sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm';
+      
+      // Control exacto de márgenes internos para pegar al borde superior (ajusta el paddingTop a 0 o al margen de tu impresora)
+      sheetDiv.style.paddingTop = '0.4cm'; 
+      sheetDiv.style.paddingBottom = '0cm';
+      sheetDiv.style.paddingLeft = '0.3cm';
+      sheetDiv.style.paddingRight = '0.3cm';
 
       const gridDiv = document.createElement('div');
-      gridDiv.className = 'grid-labels grid justify-center items-center';
+      gridDiv.className = 'grid-labels grid justify-center items-start align-content-start';
       gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
       gridDiv.style.gridTemplateRows = `repeat(${maxRows}, 3.7cm)`;
       
-      // AQUÍ ESTABLECES EL ESPACIADO IDÉNTICO PARA AMBOS LADOS (Horizontal y Vertical)
-      let uniformGap = '2px'; // Puedes cambiar a '1mm', '1.5px', etc. según tu preferencia
+      let uniformGap = '2px'; // Espacio uniforme entre filas y columnas
       gridDiv.style.columnGap = uniformGap;
       gridDiv.style.rowGap = uniformGap;
 
@@ -1199,7 +1203,7 @@ class App {
         card.style.width = '2.3cm';
         card.style.height = '3.7cm';
 
-        // 1. Logotipo institucional estático desde la ruta local requerida
+        // 1. Logotipo institucional estático
         const logoContainer = document.createElement('div');
         logoContainer.className = 'label-logo-container h-[16%] flex items-center justify-center p-[1px] bg-white';
         

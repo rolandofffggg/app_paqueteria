@@ -465,58 +465,55 @@ async loadPrintNotifyView() {
 
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
     
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    this.renderPrintCard(packages[0].packageId);
+    // CORRECCIÓN: Pasamos el objeto completo packages[0] directamente
+    this.renderPrintCard(packages[0]);
   }
 
   async searchPrintPackage(query) {
     const q = (query || '').toLowerCase().trim();
     const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-    
+    if (!printCard) return; 
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
-
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
     if (!q) {
       this.renderPrintCard(packages[0]);
       return;
     }
-
-    const filtered = packages.filter(p => 
-      (p.code || '').toLowerCase().includes(q) || 
-      (p.client || '').toLowerCase().includes(q)
-    );
-
-    if (filtered.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
+    // BÚSQUEDA ROBUSTA: Primero busca coincidencia exacta de código (ideal para QR), luego parcial por código o cliente
+    let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
+    if (!found) {
+      found = packages.find(p => 
+        (p.code || '').toLowerCase().includes(q) || 
+        (p.client || '').toLowerCase().includes(q)
+      );
+    }
+    if (!found) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontró ningún paquete con ese criterio.</p>';
       return;
     }
-
-    this.renderPrintCard(filtered[0]);
+    this.renderPrintCard(found);
   }
-
+  
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Código de paquete inválido.');
       return;
     }
-
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => 
       ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
        (p.code || '').toUpperCase().trim() === cleanQuery)
     );
-
     if (!pkg) {
       this.showToast('Paquete no encontrado.');
       return;

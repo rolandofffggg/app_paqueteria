@@ -1174,16 +1174,20 @@ class App {
 
     for (let s = 0; s < totalSheets; s++) {
       const sheetDiv = document.createElement('div');
-      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex justify-center`;
+      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-center`;
       sheetDiv.style.width = '21.59cm';
-      sheetDiv.style.minHeight = sheetType === 'carta' ? '27.94cm' : '35.56cm';
-      sheetDiv.style.padding = sheetType === 'carta' ? '0.5cm 0.3cm' : '0.8cm 0.3cm';
+      sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm'; // Usar height en lugar de min-height fija el contenedor
+      sheetDiv.style.padding = '0cm'; // Eliminamos padding interno para controlarlo con el grid
 
       const gridDiv = document.createElement('div');
-      // Define el mismo espacio tanto para columnas como para filas (por ejemplo, 2px uniformes)
-      gridDiv.className = 'grid-labels grid justify-center align-content-start';
+      gridDiv.className = 'grid-labels grid justify-center items-center';
       gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
-      gridDiv.style.gap = `2px`; // Cambia este valor (en px, mm o cm) para que separación horizontal y vertical sean idénticas
+      gridDiv.style.gridTemplateRows = `repeat(${maxRows}, 3.7cm)`;
+      
+      // AQUÍ ESTABLECES EL ESPACIADO IDÉNTICO PARA AMBOS LADOS (Horizontal y Vertical)
+      let uniformGap = '2px'; // Puedes cambiar a '1mm', '1.5px', etc. según tu preferencia
+      gridDiv.style.columnGap = uniformGap;
+      gridDiv.style.rowGap = uniformGap;
 
       let labelsInThisSheet = Math.min(labelsPerSheet, totalLabels - (s * labelsPerSheet));
 

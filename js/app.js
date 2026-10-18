@@ -378,7 +378,7 @@ class App {
     const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
-      <div class="text-lg font-black text-slate-800 font-mono mb-0.5">${pkg.code}</div>
+      <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>

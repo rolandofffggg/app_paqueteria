@@ -369,58 +369,37 @@ renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    const phoneClient = (pkg.phone || '').trim();
-    const phoneRecipient = (pkg.recipientPhone || '').trim();
-    const hasClientPhone = phoneClient.length > 0;
-    const hasRecipientPhone = phoneRecipient.length > 0;
+    const qr = qrcode(4, 'L');
+    qr.addData(pkg.code);
+    qr.make();
+    const qrImg = qr.createImgTag(4);
     
-    const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
-    const safeCode = (pkg.code || '').replace(/'/g, "\\'");
+    const hasClientPhone = !!pkg.phone;
+    const hasRecipientPhone = !!pkg.recipientPhone;
     
-    // Generamos un identificador único para el contenedor QR de la tarjeta
-    const qrTargetId = `print-qr-box-${Date.now()}`;
-
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
-      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">
-        <div id="${qrTargetId}" class="flex items-center justify-center"></div>
-      </div>
+      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
-        <p><strong>Cliente:</strong> ${pkg.client} ${phoneClient ? '(' + phoneClient + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${phoneRecipient ? phoneRecipient : 'N/A'}</p>
+        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button type="button" onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button type="button" onclick="app.sendWhatsAppNotification('${safeCode}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-600">
+        <button onclick="app.sendWhatsAppNotificationByName('${pkg.code}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button type="button" onclick="app.sendWhatsAppNotification('${safeCode}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-700">
+        <button onclick="app.sendWhatsAppNotificationByName('${pkg.code}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;
-
-    // Renderizado seguro del código QR utilizando la librería estándar QRCode
-    setTimeout(() => {
-      const qrContainer = document.getElementById(qrTargetId);
-      if (qrContainer && typeof QRCode !== 'undefined') {
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-          text: pkg.code,
-          width: 120,
-          height: 120,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.M
-        });
-      }
-    }, 50);
   }
 
   async loadPrintNotifyView() {
@@ -509,6 +488,16 @@ renderPrintCard(pkg) {
     syncEngine.processQueue();
   }
 
+async sendWhatsAppNotificationByName(pkgCode, type) {
+    const packages = await db.getAll('packages');
+    const pkg = packages.find(p => (p.code || '').toUpperCase() === pkgCode.toUpperCase());
+    if (pkg) {
+      this.sendWhatsAppNotification(pkg, type);
+    } else {
+      this.showToast('Paquete no encontrado para enviar WhatsApp.');
+    }
+  }
+  
 async sendWhatsAppNotification(pkgCode, type) {
     if (!pkgCode) {
       this.showToast('Código de paquete no válido.');

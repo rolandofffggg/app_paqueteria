@@ -366,7 +366,60 @@ class App {
     }, 150);
   }
 
-async renderPrintCard(pkgOrId) {
+// Vinculador para el botón Buscar manual del input
+  async triggerPrintSearch() {
+    const input = document.getElementById('print-search-input');
+    if (input) {
+      await this.searchPrintPackage(input.value);
+    }
+  }
+
+  async loadPrintNotifyView() {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+    const searchInput = document.getElementById('print-search-input');
+    if (searchInput) searchInput.value = '';
+    const packages = await db.getAll('packages');
+    if (!packages || packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
+      return;
+    }
+    // Ordenamiento seguro por fecha descendente
+    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    // Carga obligatoria del último paquete registrado
+    await this.renderPrintCard(packages[0]);
+  }
+
+  async searchPrintPackage(query) {
+    const q = (query || '').toLowerCase().trim();
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return; 
+    const packages = await db.getAll('packages');
+    if (!packages || packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
+      return;
+    }
+    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    if (!q) {
+      await this.renderPrintCard(packages[0]);
+      return;
+    }
+    // Coincidencia exacta de código o búsqueda parcial por código/cliente
+    let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
+    if (!found) {
+      found = packages.find(p => 
+        (p.code || '').toLowerCase().includes(q) || 
+        (p.client || '').toLowerCase().includes(q)
+      );
+    }
+    if (!found) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontró ningún paquete con ese criterio.</p>';
+      return;
+    }
+    await this.renderPrintCard(found);
+  }
+  
+  async renderPrintCard(pkgOrId) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
 
@@ -422,29 +475,34 @@ async renderPrintCard(pkgOrId) {
     `;
   }
 
-async updateCurrentRecipientPhone() {
+  async updateCurrentRecipientPhone() {
     if (!this.currentPrintPackageId) {
       this.showToast('No hay ningún paquete seleccionado.');
       return;
     }
     const input = document.getElementById('notify-recipient-phone');
     if (!input) return;
+    
     const cleanPhone = input.value.replace(/\D/g, '');
     const pkg = await db.get('packages', this.currentPrintPackageId);
     if (!pkg) {
       this.showToast('Error: Paquete no encontrado.');
       return;
     }
+
     const activeUser = auth.getUser();
     pkg.recipientPhone = cleanPhone;
     pkg.updatedAt = new Date().toISOString();
     pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
+
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
+
     this.showToast('✅ Celular del destinatario actualizado.', 'success');
     await this.renderPrintCard(pkg);
     syncEngine.processQueue();
   }
+
   
 async updateRecipientPhoneInNotify(packageId) {
     const input = document.getElementById('notify-recipient-phone');
@@ -476,58 +534,6 @@ async updateRecipientPhoneInNotify(packageId) {
       return;
     }
     this.sendWhatsAppNotification(pkg, type);
-  }
-
-
-  async triggerPrintSearch() {
-    const input = document.getElementById('print-search-input');
-    if (input) {
-      await this.searchPrintPackage(input.value);
-    }
-  }
-  
-  async loadPrintNotifyView() {
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-    const searchInput = document.getElementById('print-search-input');
-    if (searchInput) searchInput.value = '';
-    const packages = await db.getAll('packages');
-    if (!packages || packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-    // Ordenamiento seguro por fecha descendente
-    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    // Carga obligatoria del último paquete registrado
-    await this.renderPrintCard(packages[0]);
-  }
-
-  async searchPrintPackage(query) {
-    const q = (query || '').toLowerCase().trim();
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return; 
-    const packages = await db.getAll('packages');
-    if (!packages || packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    if (!q) {
-      this.renderPrintCard(packages[0]);
-      return;
-    }
-    let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
-    if (!found) {
-      found = packages.find(p => 
-        (p.code || '').toLowerCase().includes(q) || 
-        (p.client || '').toLowerCase().includes(q)
-      );
-    }
-    if (!found) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontró ningún paquete con ese criterio.</p>';
-      return;
-    }
-    this.renderPrintCard(found);
   }
 
   

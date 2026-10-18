@@ -4,6 +4,40 @@ class ScannerManager {
     this.targetInputId = null;
     this.currentMode = null;
     this.activePackage = null;
+    this.lastScannedCode = null;
+    this.lastScanTimestamp = 0;
+  }
+
+  playSuccessBeep(code = '') {
+    const now = Date.now();
+    if (code && code === this.lastScannedCode && (now - this.lastScanTimestamp) < 2000) {
+      return; // Evita reproducciones duplicadas para el mismo código en menos de 2 segundos
+    }
+    if (code) {
+      this.lastScannedCode = code;
+    }
+    this.lastScanTimestamp = now;
+
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // Nota A5
+
+      gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.2);
+    } catch (e) {
+      console.error('Error al reproducir sonido de confirmación:', e);
+    }
   }
 
   async open(title) {
@@ -57,18 +91,19 @@ class ScannerManager {
       if (target) {
         target.value = cleanText;
         target.dispatchEvent(new Event('input'));
+        this.playSuccessBeep(cleanText); // Recepción / Notificar (lectura exitosa)
       }
     } 
-else if (this.currentMode === 'FIX_LOC') {
+    else if (this.currentMode === 'FIX_LOC') {
       const locInput = document.getElementById('inv-fixed-loc');
       if (locInput) {
         locInput.value = cleanText;
-        // Llamamos a la función de App para habilitar los botones de verificación
         app.handleFixedLocationInput(cleanText);
+        this.playSuccessBeep(cleanText); // Ubicación fija (lectura exitosa)
       }
       document.getElementById('inv-scanned-list').innerHTML = '';
     } 
-else if (this.currentMode === 'INV_PKG') {
+    else if (this.currentMode === 'INV_PKG') {
       const fixedLocInput = document.getElementById('inv-fixed-loc');
       const fixedLoc = fixedLocInput ? fixedLocInput.value.trim() : '';
       
@@ -76,7 +111,6 @@ else if (this.currentMode === 'INV_PKG') {
         app.showToast('Ingrese o escanee una ubicación fija primero.');
         return;
       }
-      // Pasamos true para que abra automáticamente el escáner de nuevo
       app.updatePackageLocation(cleanText, fixedLoc, true);
     }
     else if (this.currentMode === 'DELIVERY') {

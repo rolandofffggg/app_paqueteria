@@ -365,7 +365,7 @@ class App {
     }, 150);
   }
 
-renderPrintCard(pkg) {
+  renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
@@ -378,13 +378,9 @@ renderPrintCard(pkg) {
     const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
-      <!-- Reducido el margen inferior (mb-0.5 en lugar de mb-1 o similares) -->
       <div class="text-lg font-black text-slate-800 font-mono mb-0.5">${pkg.code}</div>
-      
-      <!-- Contenedor QR: Reducido drásticamente el padding (p-1 en vez de p-3) y márgenes superior e inferior (my-0) -->
-      <div class="flex justify-center my-0 p-1 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
-      
-      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1">
+      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
+      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>

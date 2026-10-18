@@ -366,6 +366,15 @@ class App {
   }
 
 renderPrintCard(pkg) {
+    // Almacenar de forma independiente el paquete actual en visualización
+    this.currentNotifyPackage = pkg || null;
+    
+    // Rellenar de manera automática el campo numérico con el celular actual del destinatario si existe
+    const editPhoneInput = document.getElementById('notify-edit-recipient-phone');
+    if (editPhoneInput) {
+      editPhoneInput.value = pkg && pkg.recipientPhone ? pkg.recipientPhone : '';
+    }
+
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
@@ -383,7 +392,7 @@ renderPrintCard(pkg) {
       <div class="text-xs font-bold text-black tracking-[0.2px] leading-tight mt-0">${pkg.code}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        <p><strong>Destinatario:</strong> <span id="label-recipient-phone-text">${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</span></p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
@@ -412,6 +421,9 @@ renderPrintCard(pkg) {
 
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
+      this.currentNotifyPackage = null;
+      const editPhoneInput = document.getElementById('notify-edit-recipient-phone');
+      if (editPhoneInput) editPhoneInput.value = '';
       printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
       return;
     }
@@ -427,6 +439,9 @@ renderPrintCard(pkg) {
     
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
+      this.currentNotifyPackage = null;
+      const editPhoneInput = document.getElementById('notify-edit-recipient-phone');
+      if (editPhoneInput) editPhoneInput.value = '';
       printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
       return;
     }
@@ -444,11 +459,51 @@ renderPrintCard(pkg) {
     );
 
     if (filtered.length === 0) {
+      this.currentNotifyPackage = null;
+      const editPhoneInput = document.getElementById('notify-edit-recipient-phone');
+      if (editPhoneInput) editPhoneInput.value = '';
       printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
       return;
     }
 
     this.renderPrintCard(filtered[0]);
+  }
+
+  // --- NUEVA FUNCIONALIDAD INDEPENDIENTE PARA GUARDAR EL CELULAR DEL DESTINATARIO ---
+  async saveRecipientPhoneFromNotify() {
+    if (!this.currentNotifyPackage) {
+      this.showToast('No hay ningún paquete seleccionado o filtrado para actualizar.', 'warning');
+      return;
+    }
+
+    const newPhoneInput = document.getElementById('notify-edit-recipient-phone');
+    if (!newPhoneInput) return;
+
+    const cleanedPhone = newPhoneInput.value.replace(/\D/g, '');
+    const activeUser = auth.getUser();
+
+    // Actualizar los datos en el objeto del paquete actual
+    this.currentNotifyPackage.recipientPhone = cleanedPhone;
+    this.currentNotifyPackage.updatedAt = new Date().toISOString();
+    this.currentNotifyPackage.updatedBy = activeUser ? activeUser.username : 'sistema';
+
+    // Guardar cambios en la base de datos local y en la cola de sincronización
+    await db.put('packages', this.currentNotifyPackage);
+    await db.put('syncQueue', { 
+      id: 'SYNC-' + Date.now(), 
+      type: 'UPDATE', 
+      payload: this.currentNotifyPackage 
+    });
+
+    this.showToast('✅ Celular del destinatario actualizado con éxito.', 'success');
+
+    // Actualizar los datos del módulo renderizando de nuevo la tarjeta y refrescando el dashboard
+    this.renderPrintCard(this.currentNotifyPackage);
+    this.loadDashboard();
+    
+    if (typeof syncEngine !== 'undefined') {
+      syncEngine.processQueue();
+    }
   }
 
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {

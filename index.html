@@ -396,37 +396,33 @@
     <section id="sec-labels" class="space-y-3 hidden">
       <h2 class="text-base font-bold text-slate-700">Generador de Etiquetas</h2>
       <div class="control-panel bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-        <div class="space-y-2 text-xs">
+        <!-- Grilla fija de 2 columnas para celular y escritorio -->
+        <div class="grid grid-cols-2 gap-2 text-xs">
           <!-- Fila 1: Número Inicial y Cantidad de Hojas -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div class="form-group">
-              <label class="block font-bold text-slate-600 mb-0.5" for="inputStart">Correlativo inicial:</label>
-              <input type="number" id="inputStart" value="1" min="1" max="19144736" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
-            </div>
-            <div class="form-group">
-              <label class="block font-bold text-slate-600 mb-0.5" for="inputSheets">Cantidad de Hojas:</label>
-              <input type="number" id="inputSheets" value="1" min="1" max="1000" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
-            </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="inputStart">Correlativo Inicial:</label>
+            <input type="number" id="inputStart" value="1" min="1" max="19144736" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
+          </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="inputSheets">Cantidad de Hojas:</label>
+            <input type="number" id="inputSheets" value="1" min="1" max="1000" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
           </div>
 
           <!-- Fila 2: Texto de Encabezado y Tipo de Hoja -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div class="form-group">
-              <label class="block font-bold text-slate-600 mb-0.5" for="headerText">Encabezado:</label>
-              <input type="text" id="headerText" value="LA CLAVE" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
-            </div>
-            <div class="form-group">
-              <label class="block font-bold text-slate-600 mb-0.5" for="sheetType">Tipo de Hoja:</label>
-              <select id="sheetType" class="w-full px-2.5 py-1.5 border rounded-lg font-bold bg-white">
-                <option value="carta">Carta - 56 etq.</option>
-                <option value="oficio">Oficio - 64 etq.</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="headerText">Encabezado:</label>
+            <input type="text" id="headerText" value="LA CLAVE" class="w-full px-2.5 py-1.5 border rounded-lg font-bold">
+          </div>
+          <div class="form-group">
+            <label class="block font-bold text-slate-600 mb-0.5" for="sheetType">Tipo de Hoja:</label>
+            <select id="sheetType" class="w-full px-2.5 py-1.5 border rounded-lg font-bold bg-white">
+              <option value="carta">Carta (56 etq.)</option>
+              <option value="oficio">Oficio (64 etq.)</option>
+            </select>
           </div>
         </div>
-
         <div class="form-group">
-          <label class="block font-bold text-slate-600 mb-1 text-xs">Color de Cinta / Encabezado:</label>
+          <label class="block font-bold text-slate-600 mb-1 text-xs">Color de cinta:</label>
           <div class="color-palette grid grid-cols-8 gap-1.5" id="colorPalette">
             <!-- Generado por JS -->
           </div>

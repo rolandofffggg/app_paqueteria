@@ -379,7 +379,7 @@ renderPrintCard(pkg) {
     
     printCard.innerHTML = `
       <!-- Reducido el margen inferior (mb-0.5 en lugar de mb-1 o similares) -->
-      <div class="text-lg font-black text-slate-800 font-mono mb-0.5">${pkg.code}</div>
+      <div class="text-lg font-black text-slate-800 font-mono mb-0.0">${pkg.code}</div>
       
       <!-- Contenedor QR: Reducido drásticamente el padding (p-1 en vez de p-3) y márgenes superior e inferior (my-0) -->
       <div class="flex justify-center my-0 p-1 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>

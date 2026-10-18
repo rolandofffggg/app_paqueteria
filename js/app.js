@@ -380,7 +380,7 @@ async renderPrintCard(pkgOrId) {
       return;
     }
     
-    // Almacenamos el ID del paquete activo para la edición independiente del celular
+    // Guardamos el ID del paquete activo actual
     this.currentPrintPackageId = pkg.packageId;
     const phoneInput = document.getElementById('notify-recipient-phone');
     if (phoneInput) {
@@ -422,14 +422,13 @@ async renderPrintCard(pkgOrId) {
     `;
   }
 
-  async updateCurrentRecipientPhone() {
+async updateCurrentRecipientPhone() {
     if (!this.currentPrintPackageId) {
       this.showToast('No hay ningún paquete seleccionado.');
       return;
     }
     const input = document.getElementById('notify-recipient-phone');
     if (!input) return;
-    
     const cleanPhone = input.value.replace(/\D/g, '');
     const pkg = await db.get('packages', this.currentPrintPackageId);
     if (!pkg) {
@@ -440,15 +439,13 @@ async renderPrintCard(pkgOrId) {
     pkg.recipientPhone = cleanPhone;
     pkg.updatedAt = new Date().toISOString();
     pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
-
     await db.put('packages', pkg);
     await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
-
     this.showToast('✅ Celular del destinatario actualizado.', 'success');
-    await this.renderPrintCard(pkg); // Refresca los botones de WhatsApp
+    await this.renderPrintCard(pkg);
     syncEngine.processQueue();
   }
-
+  
 async updateRecipientPhoneInNotify(packageId) {
     const input = document.getElementById('notify-recipient-phone');
     if (!input) return;
@@ -482,8 +479,14 @@ async updateRecipientPhoneInNotify(packageId) {
   }
 
 
+  async triggerPrintSearch() {
+    const input = document.getElementById('print-search-input');
+    if (input) {
+      await this.searchPrintPackage(input.value);
+    }
+  }
   
-async loadPrintNotifyView() {
+  async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
     const searchInput = document.getElementById('print-search-input');
@@ -493,8 +496,10 @@ async loadPrintNotifyView() {
       printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
+    // Ordenamiento seguro por fecha descendente
     packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    this.renderPrintCard(packages[0]);
+    // Carga obligatoria del último paquete registrado
+    await this.renderPrintCard(packages[0]);
   }
 
   async searchPrintPackage(query) {

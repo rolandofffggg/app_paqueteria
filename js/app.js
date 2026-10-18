@@ -369,19 +369,21 @@ async renderPrintCard(pkgOrId) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
 
-    // Si recibimos un ID o un objeto, nos aseguramos de obtener la versión más reciente de la BD
     let pkg = pkgOrId;
     if (typeof pkgOrId === 'string') {
       pkg = await db.get('packages', pkgOrId);
     }
-    if (!pkg) return;
+    
+    if (!pkg) {
+      printCard.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Paquete no encontrado o ID inválido.</p>';
+      return;
+    }
     
     const qr = qrcode(4, 'L');
     qr.addData(pkg.code);
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    // Validar teléfonos limpios asegurando que existan
     const clientPhoneClean = pkg.phone ? pkg.phone.replace(/\D/g, '') : '';
     const recipientPhoneClean = pkg.recipientPhone ? pkg.recipientPhone.replace(/\D/g, '') : '';
     
@@ -423,7 +425,6 @@ async renderPrintCard(pkgOrId) {
       </div>
     `;
   }
-
 async updateRecipientPhoneInNotify(packageId) {
     const input = document.getElementById('notify-recipient-phone');
     if (!input) return;
@@ -455,22 +456,21 @@ async updateRecipientPhoneInNotify(packageId) {
     }
     this.sendWhatsAppNotification(pkg, type);
   }
+
+
   
 async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
-    
     const searchInput = document.getElementById('print-search-input');
     if (searchInput) searchInput.value = '';
-
     const packages = await db.getAll('packages');
-    if (packages.length === 0) {
+    if (!packages || packages.length === 0) {
       printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
-    
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    // CORRECCIÓN: Pasamos el objeto completo packages[0] directamente
+    // Ordenamiento seguro con respaldo numérico para evitar NaN
+    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     this.renderPrintCard(packages[0]);
   }
 
@@ -479,16 +479,16 @@ async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return; 
     const packages = await db.getAll('packages');
-    if (packages.length === 0) {
+    if (!packages || packages.length === 0) {
       printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     if (!q) {
       this.renderPrintCard(packages[0]);
       return;
     }
-    // BÚSQUEDA ROBUSTA: Primero busca coincidencia exacta de código (ideal para QR), luego parcial por código o cliente
+    // BÚSQUEDA ROBUSTA: Coincidencia exacta de código (QR / tecleo exacto) o búsqueda parcial
     let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
     if (!found) {
       found = packages.find(p => 
@@ -502,6 +502,8 @@ async loadPrintNotifyView() {
     }
     this.renderPrintCard(found);
   }
+
+
   
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();

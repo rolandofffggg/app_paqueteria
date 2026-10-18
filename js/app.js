@@ -378,19 +378,15 @@ renderPrintCard(pkg) {
     const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
-      <!-- Reducido el margen inferior (mb-0.5 en lugar de mb-1 o similares) -->
-      <div class="text-lg font-black text-slate-800 font-mono mb-0.0">${pkg.code}</div>
-      
-      <!-- Contenedor QR: Reducido drásticamente el padding (p-1 en vez de p-3) y márgenes superior e inferior (my-0) -->
-      <div class="flex justify-center my-0 p-1 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
-      
+      <div class="text-lg font-black text-slate-800 font-mono mb-0">${pkg.code}</div>
+      <div class="flex justify-center my-0 p-2 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
-      <div class="space-y-1.5 pt-0.5">
+      <div class="space-y-1.5 pt-0">
         <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>

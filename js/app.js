@@ -365,7 +365,7 @@ class App {
     }, 150);
   }
 
-renderPrintCard(pkg) {
+  renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
@@ -374,40 +374,52 @@ renderPrintCard(pkg) {
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    const phoneClient = (pkg.phone || '').trim();
-    const phoneRecipient = (pkg.recipientPhone || '').trim();
-    const hasClientPhone = phoneClient.length > 0;
-    const hasRecipientPhone = phoneRecipient.length > 0;
-    
-    const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
-    const safeCode = (pkg.code || '').replace(/'/g, "\\'");
+    const hasClientPhone = !!pkg.phone;
+    const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
-        <p><strong>Cliente:</strong> ${pkg.client} ${phoneClient ? '(' + phoneClient + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${phoneRecipient ? phoneRecipient : 'N/A'}</p>
+        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button type="button" onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button type="button" onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-600">
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button type="button" onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-700">
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;
   }
 
-async searchPrintPackage(query) {
+  async loadPrintNotifyView() {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+    
+    const searchInput = document.getElementById('print-search-input');
+    if (searchInput) searchInput.value = '';
+
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
+      return;
+    }
+    
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    this.renderPrintCard(packages[0]);
+  }
+
+  async searchPrintPackage(query) {
     const q = (query || '').toLowerCase().trim();
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
@@ -435,26 +447,7 @@ async searchPrintPackage(query) {
       return;
     }
 
-    // Renderiza el primer resultado coincidente de inmediato
     this.renderPrintCard(filtered[0]);
-  }
-  
-  async loadPrintNotifyView() {
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-    
-    const searchInput = document.getElementById('print-search-input');
-    if (searchInput) searchInput.value = '';
-
-    const packages = await db.getAll('packages');
-    if (packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-    
-    // Ordenar de forma estricta por fecha de creación descendente para obtener el último registrado
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    this.renderPrintCard(packages[0]);
   }
 
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
@@ -525,28 +518,12 @@ async searchPrintPackage(query) {
     syncEngine.processQueue();
   }
 
-async sendWhatsAppNotificationByName(pkgCode, type) {
-    const packages = await db.getAll('packages');
-    const pkg = packages.find(p => (p.code || '').toUpperCase() === pkgCode.toUpperCase());
-    if (pkg) {
-      this.sendWhatsAppNotification(pkg, type);
-    } else {
-      this.showToast('Paquete no encontrado para enviar WhatsApp.');
-    }
-  }
-  
-sendWhatsAppNotification(pkg, type) {
-    if (!pkg) {
-      this.showToast('Paquete no válido.');
-      return;
-    }
-
+  sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
-    if (!rawPhone || rawPhone.trim() === '') {
-      this.showToast(`El paquete no tiene registrado un número telefónico para ${type === 'client' ? 'el cliente' : 'el destinatario'}.`);
+    if (!rawPhone) {
+      this.showToast('El paquete no tiene registrado un número telefónico.');
       return;
     }
-
     let cleanPhone = rawPhone.replace(/\D/g, '');
     if (cleanPhone.length === 8) {
       cleanPhone = '591' + cleanPhone;
@@ -554,7 +531,6 @@ sendWhatsAppNotification(pkg, type) {
       this.showToast('Número inválido. Debe ser un número de Bolivia (8 dígitos).');
       return;
     }
-
     const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
     const message = 
 `--------------------------------------------------
@@ -565,13 +541,13 @@ sendWhatsAppNotification(pkg, type) {
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días. ;
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;
     
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   }
-  
+
   async loadUsersList() {
     if (!auth.isAdmin()) return;
     const container = document.getElementById('users-list');
@@ -1164,7 +1140,7 @@ sendWhatsAppNotification(pkg, type) {
     return "FUERA DE RANGO";
   }
 
-generateLabels() {
+  generateLabels() {
     const startInput = document.getElementById('inputStart');
     const endInput = document.getElementById('inputEnd');
     const headerInput = document.getElementById('headerText');
@@ -1197,12 +1173,10 @@ generateLabels() {
 
     for (let s = 0; s < totalSheets; s++) {
       const sheetDiv = document.createElement('div');
-      // CAMBIO CLAVE: Se usa 'justify-start' en lugar de 'justify-center' para alinear al extremo superior
       sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-start`;
       sheetDiv.style.width = '21.59cm';
       sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm';
       
-      // Control exacto de márgenes internos para pegar al borde superior (ajusta el paddingTop a 0 o al margen de tu impresora)
       sheetDiv.style.paddingTop = '0.4cm'; 
       sheetDiv.style.paddingBottom = '0cm';
       sheetDiv.style.paddingLeft = '0.3cm';
@@ -1213,7 +1187,7 @@ generateLabels() {
       gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
       gridDiv.style.gridTemplateRows = `repeat(${maxRows}, 3.7cm)`;
       
-      let uniformGap = '2px'; // Espacio uniforme entre filas y columnas
+      let uniformGap = '2px'; 
       gridDiv.style.columnGap = uniformGap;
       gridDiv.style.rowGap = uniformGap;
 
@@ -1245,7 +1219,7 @@ generateLabels() {
         header.textContent = headerText;
         card.appendChild(header);
 
-        // 3. Código QR Central (Blindado para dispositivos móviles)
+        // 3. Código QR Central
         const qrContainer = document.createElement('div');
         qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0 overflow-hidden';
         
@@ -1283,10 +1257,10 @@ generateLabels() {
           let elId = `qr-mod-${s}-${i}-${cIdx}`;
           let element = document.getElementById(elId);
           if (element) {
-            element.innerHTML = ''; // Limpiar por si acaso
+            element.innerHTML = '';
             new QRCode(element, {
               text: codeVal,
-              width: 75,  // Reducido ligeramente para asegurar que nunca desborde en móviles
+              width: 75,
               height: 75,
               colorDark: "#000000",
               colorLight: "#ffffff",

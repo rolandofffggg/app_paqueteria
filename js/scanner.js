@@ -8,7 +8,7 @@ class ScannerManager {
     this.lastScanTimestamp = 0;
   }
 
-  playSuccessBeep(code = '') {
+playSuccessBeep(code = '') {
     const now = Date.now();
     if (code && code === this.lastScannedCode && (now - this.lastScanTimestamp) < 2000) {
       return; // Evita reproducciones duplicadas para el mismo código en menos de 2 segundos
@@ -23,18 +23,23 @@ class ScannerManager {
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
 
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
-      oscillator.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); // Nota A5
+      // 'square' produce un sonido fuerte y electrónico similar a un escáner comercial
+      oscillator.type = 'square';
+      
+      // Frecuencia fija y aguda (aprox. 2000 Hz), típica de las pistolas de códigos de barras
+      oscillator.frequency.setValueAtTime(2000, audioCtx.currentTime);
 
-      gainNode.gain.setValueAtTime(0.15, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      // Ganancia (volumen) más alta para mayor potencia sonora (0.3)
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      
+      // Corte abrupto (fade-out muy rápido) para lograr el efecto "bip" seco e inmediato
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
 
       oscillator.start();
-      oscillator.stop(audioCtx.currentTime + 0.2);
+      oscillator.stop(audioCtx.currentTime + 0.08); // Duración corta de 80 milisegundos
     } catch (e) {
       console.error('Error al reproducir sonido de confirmación:', e);
     }

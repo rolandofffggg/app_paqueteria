@@ -36,11 +36,6 @@ class ScannerManager {
     await this.open('Escanear Ubicación Fija');
   }
 
-  async scanForPrintNotify() {
-    this.currentMode = 'PRINT_NOTIFY';
-    await this.open('Escanear Paquete');
-  }
-
   async scanInventoryPackage() {
     this.currentMode = 'INV_PKG';
     await this.open('Escanear Paquete para Inventario');
@@ -64,23 +59,16 @@ class ScannerManager {
         target.dispatchEvent(new Event('input'));
       }
     } 
-    else if (this.currentMode === 'FIX_LOC') {
+else if (this.currentMode === 'FIX_LOC') {
       const locInput = document.getElementById('inv-fixed-loc');
       if (locInput) {
         locInput.value = cleanText;
+        // Llamamos a la función de App para habilitar los botones de verificación
         app.handleFixedLocationInput(cleanText);
       }
       document.getElementById('inv-scanned-list').innerHTML = '';
     } 
-    else if (this.currentMode === 'PRINT_NOTIFY') {
-      const cleanCode = cleanText.trim();
-      const input = document.getElementById('print-search-input');
-      if (input) {
-        input.value = cleanCode;
-      }
-      app.searchPrintPackage(cleanCode);
-    }
-    else if (this.currentMode === 'INV_PKG') {
+else if (this.currentMode === 'INV_PKG') {
       const fixedLocInput = document.getElementById('inv-fixed-loc');
       const fixedLoc = fixedLocInput ? fixedLocInput.value.trim() : '';
       
@@ -88,6 +76,7 @@ class ScannerManager {
         app.showToast('Ingrese o escanee una ubicación fija primero.');
         return;
       }
+      // Pasamos true para que abra automáticamente el escáner de nuevo
       app.updatePackageLocation(cleanText, fixedLoc, true);
     }
     else if (this.currentMode === 'DELIVERY') {

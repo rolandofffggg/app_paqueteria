@@ -531,7 +531,7 @@ async saveRecipientPhoneFromNotify() {
   }
   
 
-  async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
+async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Código de paquete inválido.');
@@ -552,6 +552,10 @@ async saveRecipientPhoneFromNotify() {
       this.showToast(`Error: El paquete ${pkg.code} está en estado "${pkg.status}". Reubicación no permitida.`);
       return;
     }
+
+    // Validación exitosa: reproducir sonido de confirmación con control de duplicados
+    scanner.playSuccessBeep(cleanQuery);
+
     const activeUser = auth.getUser();
     pkg.location = newLocation;
     pkg.updatedAt = new Date().toISOString();
@@ -575,6 +579,7 @@ async saveRecipientPhoneFromNotify() {
       }, 300);
     }
   }
+  
 
   async confirmDelivery() {
     if (!this.selectedDeliveryPackage) return;
@@ -1084,7 +1089,7 @@ async saveRecipientPhoneFromNotify() {
     await this.prepareDelivery(code);
   }
 
-  async prepareDelivery(qrCode) {
+async prepareDelivery(qrCode) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Ingrese un código válido.');
@@ -1101,6 +1106,10 @@ async saveRecipientPhoneFromNotify() {
       this.showToast('Paquete no disponible para entrega.');
       return;
     }
+
+    // Validación exitosa: reproducir sonido de confirmación con control de duplicados
+    scanner.playSuccessBeep(cleanQuery);
+
     this.selectedDeliveryPackage = pkg;
     const createdDate = new Date(pkg.createdAt || Date.now());
     const now = new Date();
@@ -1126,6 +1135,7 @@ async saveRecipientPhoneFromNotify() {
     document.getElementById('calc-total').textContent = `Bs. ${totalCobro.toFixed(2)}`;
     document.getElementById('del-details').classList.remove('hidden');
   }
+  
 
   async downloadReport() {
     const packages = await db.getAll('packages');

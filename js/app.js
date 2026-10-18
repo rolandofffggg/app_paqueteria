@@ -136,7 +136,8 @@ class App {
     }
   }
 
-  async savePackage(e) {
+  
+async savePackage(e) {
     e.preventDefault();
     const pkgCode = document.getElementById('rec-codigo').value.trim().toUpperCase();
     
@@ -150,10 +151,24 @@ class App {
       return;
     }
     const clientName = document.getElementById('rec-cliente').value.toUpperCase().trim();
-    const rawPhone = document.getElementById('rec-celular').value;
-    const rawRecipientPhone = document.getElementById('rec-celular-dest').value;
+    const rawPhone = document.getElementById('rec-celular').value.trim();
+    const rawRecipientPhone = document.getElementById('rec-celular-dest').value.trim();
+
+    // --- NUEVA VALIDACIÓN DE CELULARES DE BOLIVIA (Opcionales / 8 dígitos) ---
     const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
     const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
+
+    if (rawPhone && phoneClient.length !== 8) {
+      this.showToast('El celular del cliente debe tener exactamente 8 dígitos.');
+      return;
+    }
+
+    if (rawRecipientPhone && phoneRecipient.length !== 8) {
+      this.showToast('El celular del destinatario debe tener exactamente 8 dígitos.');
+      return;
+    }
+    // ------------------------------------------------------------------------
+
     let locationVal = document.getElementById('rec-ubicacion').value.trim();
     const keepClient = document.getElementById('chk-keep-client').checked;
     const keepCategory = document.getElementById('chk-keep-category').checked;
@@ -209,6 +224,7 @@ class App {
     syncEngine.processQueue();
   }
 
+  
   async loadLocationGroupsSettings() {
     const saved = await db.get('settings', 'locationGroups');
     if (saved && saved.value) this.locationGroups = saved.value;

@@ -387,9 +387,8 @@ renderPrintCard(pkg) {
     const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
-      <div class="text-lg font-black text-slate-800 font-mono mb-0.5">${pkg.code}</div>
       <div class="flex justify-center my-0 p-1 bg-white rounded-xl inline-block leading-none">${qrImg}</div>
-      <div class="text-xs font-bold text-black tracking-[0.2px] leading-tight mt-0">${pkg.code}</div>
+      <div class="text-lg font-black text-slate-800 font-mono mb-0">${pkg.code}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> <span id="label-recipient-phone-text">${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</span></p>

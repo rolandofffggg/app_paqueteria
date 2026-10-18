@@ -6,7 +6,7 @@ class App {
     this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
     this.companyName = '';
     this.catalog = {
-      categories: ['ROPA', 'JOYAS', 'REPUESTOS', 'DOCUMENTOS', 'ELECTRÓNICA', 'OTROS'],f
+      categories: ['ROPA', 'JOYAS', 'REPUESTOS', 'DOCUMENTOS', 'ELECTRÓNICA', 'OTROS'],
       sizes: ['PEQUEÑO', 'MEDIANO', 'GRANDE'],
       colors: ['AMARILLO', 'ROJO', 'AZUL', 'NEGRO', 'BLANCO', 'VERDE', 'OTRO']
     };

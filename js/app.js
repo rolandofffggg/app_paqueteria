@@ -388,8 +388,8 @@ renderPrintCard(pkg) {
     
     printCard.innerHTML = `
       <div class="flex justify-center my-0 p-1 bg-white rounded-xl inline-block leading-none">${qrImg}</div>
-      <div class="text-lg font-black text-slate-800 font-mono mb-0">${pkg.code}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
+        <p><strong>Codigo:</strong> ${pkg.code}</p>
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
         <p><strong>Destinatario:</strong> <span id="label-recipient-phone-text">${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</span></p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>

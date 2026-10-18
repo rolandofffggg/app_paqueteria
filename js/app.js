@@ -365,7 +365,7 @@ class App {
     }, 150);
   }
 
-  renderPrintCard(pkg) {
+renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
@@ -377,6 +377,9 @@ class App {
     const hasClientPhone = !!pkg.phone;
     const hasRecipientPhone = !!pkg.recipientPhone;
     
+    const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
+    const safeCode = (pkg.code || '').replace(/'/g, "\\'");
+    
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
@@ -387,15 +390,15 @@ class App {
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+        <button onclick="app.sendWhatsAppNotification('${safeCode}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-600">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+        <button onclick="app.sendWhatsAppNotification('${safeCode}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-700">
           🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
@@ -518,10 +521,20 @@ class App {
     syncEngine.processQueue();
   }
 
-  sendWhatsAppNotification(pkg, type) {
+async sendWhatsAppNotification(pkgCode, type) {
+    if (!pkgCode) {
+      this.showToast('Código de paquete no válido.');
+      return;
+    }
+    const packages = await db.getAll('packages');
+    const pkg = packages.find(p => (p.code || '').toUpperCase() === pkgCode.toUpperCase());
+    if (!pkg) {
+      this.showToast('No se encontró el paquete seleccionado.');
+      return;
+    }
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {
-      this.showToast('El paquete no tiene registrado un número telefónico.');
+      this.showToast('El paquete no tiene registrado un número telefónico para este destinatario.');
       return;
     }
     let cleanPhone = rawPhone.replace(/\D/g, '');
@@ -541,13 +554,13 @@ class App {
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días. ;
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;
     
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   }
-
+  
   async loadUsersList() {
     if (!auth.isAdmin()) return;
     const container = document.getElementById('users-list');

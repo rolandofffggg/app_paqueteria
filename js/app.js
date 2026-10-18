@@ -374,8 +374,11 @@ renderPrintCard(pkg) {
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    const hasClientPhone = !!pkg.phone;
-    const hasRecipientPhone = !!pkg.recipientPhone;
+    // Validar de manera robusta si existen números limpios
+    const phoneClient = (pkg.phone || '').trim();
+    const phoneRecipient = (pkg.recipientPhone || '').trim();
+    const hasClientPhone = phoneClient.length > 0;
+    const hasRecipientPhone = phoneRecipient.length > 0;
     
     const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
     const safeCode = (pkg.code || '').replace(/'/g, "\\'");
@@ -384,27 +387,27 @@ renderPrintCard(pkg) {
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
-        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        <p><strong>Cliente:</strong> ${pkg.client} ${phoneClient ? '(' + phoneClient + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${phoneRecipient ? phoneRecipient : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button type="button" onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button onclick="app.sendWhatsAppNotification('${safeCode}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
+        <button type="button" onclick="app.sendWhatsAppNotification('${safeCode}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-600">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button onclick="app.sendWhatsAppNotification('${safeCode}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
+        <button type="button" onclick="app.sendWhatsAppNotification('${safeCode}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
           class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-700">
           🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;
   }
-
+  
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
@@ -526,17 +529,22 @@ async sendWhatsAppNotification(pkgCode, type) {
       this.showToast('Código de paquete no válido.');
       return;
     }
+    
     const packages = await db.getAll('packages');
-    const pkg = packages.find(p => (p.code || '').toUpperCase() === pkgCode.toUpperCase());
+    const cleanSearchCode = pkgCode.toString().toUpperCase().trim();
+    const pkg = packages.find(p => (p.code || '').toString().toUpperCase().trim() === cleanSearchCode);
+
     if (!pkg) {
-      this.showToast('No se encontró el paquete seleccionado.');
+      this.showToast('No se encontró el paquete seleccionado en la base de datos.');
       return;
     }
+
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
-    if (!rawPhone) {
-      this.showToast('El paquete no tiene registrado un número telefónico para este destinatario.');
+    if (!rawPhone || rawPhone.trim() === '') {
+      this.showToast(`El paquete no tiene registrado un número telefónico para ${type === 'client' ? 'el cliente' : 'el destinatario'}.`);
       return;
     }
+
     let cleanPhone = rawPhone.replace(/\D/g, '');
     if (cleanPhone.length === 8) {
       cleanPhone = '591' + cleanPhone;
@@ -544,6 +552,7 @@ async sendWhatsAppNotification(pkgCode, type) {
       this.showToast('Número inválido. Debe ser un número de Bolivia (8 dígitos).');
       return;
     }
+
     const company = this.companyName ? `#${this.companyName}` : '#PAQUETERÍA';
     const message = 
 `--------------------------------------------------

@@ -228,7 +228,8 @@
         <div>
           <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Buscar Paquete</label>
           <div class="flex gap-2">
-            <input type="text" id="print-search-input" oninput="app.searchPrintPackage(this.value)" placeholder="Código de paquete o cliente..." class="flex-1 px-3 py-2 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="print-search-input" placeholder="Código de paquete o cliente..." class="flex-1 px-3 py-2 border rounded-lg text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+            <button type="button" onclick="app.triggerPrintSearch()" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold shrink-0">Buscar</button>
             <button type="button" onclick="scanner.scanForPrintNotify()" class="bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0">📷 QR</button>
           </div>
         </div>
@@ -242,7 +243,6 @@
             </button>
           </div>
         </div>
-
       </div>
       <!-- Tarjeta de Visualización (Datos y Botones de WhatsApp) -->
       <div id="print-card-target" class="bg-white p-4 rounded-xl border border-slate-200 text-center space-y-3 shadow-md">

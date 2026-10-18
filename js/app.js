@@ -469,7 +469,6 @@ async loadPrintNotifyView() {
       printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
       return;
     }
-    // Ordenamiento seguro con respaldo numérico para evitar NaN
     packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     this.renderPrintCard(packages[0]);
   }
@@ -488,7 +487,6 @@ async loadPrintNotifyView() {
       this.renderPrintCard(packages[0]);
       return;
     }
-    // BÚSQUEDA ROBUSTA: Coincidencia exacta de código (QR / tecleo exacto) o búsqueda parcial
     let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
     if (!found) {
       found = packages.find(p => 
@@ -502,7 +500,6 @@ async loadPrintNotifyView() {
     }
     this.renderPrintCard(found);
   }
-
 
   
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {

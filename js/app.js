@@ -369,12 +369,6 @@ renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
     if (!printCard || !pkg) return;
     
-    const qr = qrcode(4, 'L');
-    qr.addData(pkg.code);
-    qr.make();
-    const qrImg = qr.createImgTag(4);
-    
-    // Validar de manera robusta si existen números limpios
     const phoneClient = (pkg.phone || '').trim();
     const phoneRecipient = (pkg.recipientPhone || '').trim();
     const hasClientPhone = phoneClient.length > 0;
@@ -383,9 +377,14 @@ renderPrintCard(pkg) {
     const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
     const safeCode = (pkg.code || '').replace(/'/g, "\\'");
     
+    // Generamos un identificador único para el contenedor QR de la tarjeta
+    const qrTargetId = `print-qr-box-${Date.now()}`;
+
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
-      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
+      <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">
+        <div id="${qrTargetId}" class="flex items-center justify-center"></div>
+      </div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${phoneClient ? '(' + phoneClient + ')' : ''}</p>
         <p><strong>Destinatario:</strong> ${phoneRecipient ? phoneRecipient : 'N/A'}</p>
@@ -406,8 +405,24 @@ renderPrintCard(pkg) {
         </button>
       </div>
     `;
+
+    // Renderizado seguro del código QR utilizando la librería estándar QRCode
+    setTimeout(() => {
+      const qrContainer = document.getElementById(qrTargetId);
+      if (qrContainer && typeof QRCode !== 'undefined') {
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+          text: pkg.code,
+          width: 120,
+          height: 120,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      }
+    }, 50);
   }
-  
+
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
@@ -421,39 +436,9 @@ renderPrintCard(pkg) {
       return;
     }
     
+    // Ordenar de forma estricta por fecha de creación descendente para obtener el último registrado
     packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     this.renderPrintCard(packages[0]);
-  }
-
-  async searchPrintPackage(query) {
-    const q = (query || '').toLowerCase().trim();
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-    
-    const packages = await db.getAll('packages');
-    if (packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-    if (!q) {
-      this.renderPrintCard(packages[0]);
-      return;
-    }
-
-    const filtered = packages.filter(p => 
-      (p.code || '').toLowerCase().includes(q) || 
-      (p.client || '').toLowerCase().includes(q)
-    );
-
-    if (filtered.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
-      return;
-    }
-
-    this.renderPrintCard(filtered[0]);
   }
 
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {

@@ -2,7 +2,6 @@ class App {
   constructor() {
     this.selectedDeliveryPackage = null;
     this.lastCreatedPackage = null;
-    this.currentPrintPackageId = null; 
     this.currentCalculatedAmount = 0;
     this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
     this.companyName = '';
@@ -366,96 +365,24 @@ class App {
     }, 150);
   }
 
-// Vinculador para el botón Buscar manual del input
-  async triggerPrintSearch() {
-    const input = document.getElementById('print-search-input');
-    if (input) {
-      await this.searchPrintPackage(input.value);
-    }
-  }
-
-  async loadPrintNotifyView() {
+  renderPrintCard(pkg) {
     const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-    const searchInput = document.getElementById('print-search-input');
-    if (searchInput) searchInput.value = '';
-    const packages = await db.getAll('packages');
-    if (!packages || packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-    // Ordenamiento seguro por fecha descendente
-    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    // Carga obligatoria del último paquete registrado
-    await this.renderPrintCard(packages[0]);
-  }
-
-  async searchPrintPackage(query) {
-    const q = (query || '').toLowerCase().trim();
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return; 
-    const packages = await db.getAll('packages');
-    if (!packages || packages.length === 0) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay paquetes disponibles.</p>';
-      return;
-    }
-    packages.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    if (!q) {
-      await this.renderPrintCard(packages[0]);
-      return;
-    }
-    // Coincidencia exacta de código o búsqueda parcial por código/cliente
-    let found = packages.find(p => (p.code || '').toLowerCase().trim() === q);
-    if (!found) {
-      found = packages.find(p => 
-        (p.code || '').toLowerCase().includes(q) || 
-        (p.client || '').toLowerCase().includes(q)
-      );
-    }
-    if (!found) {
-      printCard.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No se encontró ningún paquete con ese criterio.</p>';
-      return;
-    }
-    await this.renderPrintCard(found);
-  }
-  
-  async renderPrintCard(pkgOrId) {
-    const printCard = document.getElementById('print-card-target');
-    if (!printCard) return;
-
-    let pkg = pkgOrId;
-    if (typeof pkgOrId === 'string') {
-      pkg = await db.get('packages', pkgOrId);
-    }
-    
-    if (!pkg) {
-      printCard.innerHTML = '<p class="text-xs text-red-500 text-center py-4">Paquete no encontrado o ID inválido.</p>';
-      return;
-    }
-    
-    // Guardamos el ID del paquete activo actual
-    this.currentPrintPackageId = pkg.packageId;
-    const phoneInput = document.getElementById('notify-recipient-phone');
-    if (phoneInput) {
-      phoneInput.value = pkg.recipientPhone || '';
-    }
+    if (!printCard || !pkg) return;
     
     const qr = qrcode(4, 'L');
     qr.addData(pkg.code);
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    const clientPhoneClean = pkg.phone ? pkg.phone.replace(/\D/g, '') : '';
-    const recipientPhoneClean = pkg.recipientPhone ? pkg.recipientPhone.replace(/\D/g, '') : '';
-    
-    const hasClientPhone = clientPhoneClean.length >= 8;
-    const hasRecipientPhone = recipientPhoneClean.length >= 8;
+    const hasClientPhone = !!pkg.phone;
+    const hasRecipientPhone = !!pkg.recipientPhone;
     
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
-      <div class="bg-slate-50 p-2.5 rounded-lg border text-left text-xs space-y-1 my-1.5">
+      <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
         <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
@@ -463,11 +390,11 @@ class App {
         <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button onclick="app.sendWhatsAppNotificationById('${pkg.packageId}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button onclick="app.sendWhatsAppNotificationById('${pkg.packageId}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
           class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Destinatario
         </button>
@@ -475,79 +402,67 @@ class App {
     `;
   }
 
-  async updateCurrentRecipientPhone() {
-    if (!this.currentPrintPackageId) {
-      this.showToast('No hay ningún paquete seleccionado.');
-      return;
-    }
-    const input = document.getElementById('notify-recipient-phone');
-    if (!input) return;
+  async loadPrintNotifyView() {
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
     
-    const cleanPhone = input.value.replace(/\D/g, '');
-    const pkg = await db.get('packages', this.currentPrintPackageId);
-    if (!pkg) {
-      this.showToast('Error: Paquete no encontrado.');
+    const searchInput = document.getElementById('print-search-input');
+    if (searchInput) searchInput.value = '';
+
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
       return;
     }
-
-    const activeUser = auth.getUser();
-    pkg.recipientPhone = cleanPhone;
-    pkg.updatedAt = new Date().toISOString();
-    pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
-
-    await db.put('packages', pkg);
-    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
-
-    this.showToast('✅ Celular del destinatario actualizado.', 'success');
-    await this.renderPrintCard(pkg);
-    syncEngine.processQueue();
+    
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    this.renderPrintCard(packages[0]);
   }
 
-  
-async updateRecipientPhoneInNotify(packageId) {
-    const input = document.getElementById('notify-recipient-phone');
-    if (!input) return;
-    const cleanPhone = input.value.replace(/\D/g, '');
-    const pkg = await db.get('packages', packageId);
-    if (!pkg) {
-      this.showToast('Error: Paquete no encontrado.');
+  async searchPrintPackage(query) {
+    const q = (query || '').toLowerCase().trim();
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+    
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
       return;
     }
-    const activeUser = auth.getUser();
-    pkg.recipientPhone = cleanPhone;
-    pkg.updatedAt = new Date().toISOString();
-    pkg.updatedBy = activeUser ? activeUser.username : 'sistema';
-    
-    await db.put('packages', pkg);
-    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'UPDATE', payload: pkg });
-    this.showToast('✅ Celular del destinatario actualizado.', 'success');
-    
-    // CORRECCIÓN CRÍTICA: Volvemos a renderizar la tarjeta pasando el objeto actualizado completo
-    await this.renderPrintCard(pkg); 
-    
-    syncEngine.processQueue();
-  }
-  async sendWhatsAppNotificationById(packageId, type) {
-    const pkg = await db.get('packages', packageId);
-    if (!pkg) {
-      this.showToast('Paquete no encontrado.');
+
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (!q) {
+      this.renderPrintCard(packages[0]);
       return;
     }
-    this.sendWhatsAppNotification(pkg, type);
+
+    const filtered = packages.filter(p => 
+      (p.code || '').toLowerCase().includes(q) || 
+      (p.client || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
+      return;
+    }
+
+    this.renderPrintCard(filtered[0]);
   }
 
-  
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();
     if (!cleanQuery) {
       this.showToast('Código de paquete inválido.');
       return;
     }
+
     const packages = await db.getAll('packages');
     const pkg = packages.find(p => 
       ((p.qrCode || '').toUpperCase().trim() === cleanQuery || 
        (p.code || '').toUpperCase().trim() === cleanQuery)
     );
+
     if (!pkg) {
       this.showToast('Paquete no encontrado.');
       return;
@@ -603,7 +518,7 @@ async updateRecipientPhoneInNotify(packageId) {
     syncEngine.processQueue();
   }
 
-sendWhatsAppNotification(pkg, type) {
+  sendWhatsAppNotification(pkg, type) {
     const rawPhone = type === 'client' ? pkg.phone : pkg.recipientPhone;
     if (!rawPhone) {
       this.showToast('El paquete no tiene registrado un número telefónico.');
@@ -626,7 +541,7 @@ sendWhatsAppNotification(pkg, type) {
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días. ;
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;
     
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;

@@ -541,7 +541,7 @@ class App {
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
 *Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
 --------------------------------------------------
-💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días. ;
+💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;
     
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -1056,7 +1056,7 @@ class App {
     syncEngine.processQueue();
   }
 
-  // --- MÓDULO DE ETIQUETAS (ACTUALIZADO) ---
+  // --- MÓDULO DE ETIQUETAS ---
   initLabelsModule() {
     const paletteContainer = document.getElementById('colorPalette');
     if (!paletteContainer || paletteContainer.children.length > 0) return;
@@ -1162,8 +1162,8 @@ class App {
     }
 
     let labelsPerRow = 8;
-    let rowsPerCarta = 7;   // Carta: 7 filas x 8 = 56 etiquetas
-    let rowsPerOficio = 8;  // Oficio: 8 filas x 8 = 64 etiquetas
+    let rowsPerCarta = 7;   
+    let rowsPerOficio = 8;  
     let maxRows = sheetType === 'carta' ? rowsPerCarta : rowsPerOficio;
     let labelsPerSheet = labelsPerRow * maxRows;
 
@@ -1201,7 +1201,6 @@ class App {
         card.style.width = '2.3cm';
         card.style.height = '3.7cm';
 
-        // 1. Logotipo institucional estático
         const logoContainer = document.createElement('div');
         logoContainer.className = 'label-logo-container h-[16%] flex items-center justify-center p-[1px] bg-white';
         
@@ -1212,14 +1211,12 @@ class App {
         
         card.appendChild(logoContainer);
 
-        // 2. Cinta / Cabecera de Color
         const header = document.createElement('div');
         header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
         header.style.backgroundColor = this.selectedColor;
         header.textContent = headerText;
         card.appendChild(header);
 
-        // 3. Código QR Central
         const qrContainer = document.createElement('div');
         qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0 overflow-hidden';
         
@@ -1233,7 +1230,6 @@ class App {
         qrContainer.appendChild(qrBox);
         card.appendChild(qrContainer);
 
-        // 4. Pie de Etiqueta con texto de código
         const footer = document.createElement('div');
         footer.className = 'label-footer flex items-center justify-center pb-[2px] mt-[-2px] bg-white';
         const codeText = document.createElement('div');

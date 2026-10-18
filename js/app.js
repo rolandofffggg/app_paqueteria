@@ -374,34 +374,71 @@ renderPrintCard(pkg) {
     qr.make();
     const qrImg = qr.createImgTag(4);
     
-    const hasClientPhone = !!pkg.phone;
-    const hasRecipientPhone = !!pkg.recipientPhone;
+    const phoneClient = (pkg.phone || '').trim();
+    const phoneRecipient = (pkg.recipientPhone || '').trim();
+    const hasClientPhone = phoneClient.length > 0;
+    const hasRecipientPhone = phoneRecipient.length > 0;
+    
+    const safeClientName = (pkg.client || '').replace(/'/g, "\\'");
+    const safeCode = (pkg.code || '').replace(/'/g, "\\'");
     
     printCard.innerHTML = `
       <div class="text-lg font-black text-slate-800 font-mono mb-1">${pkg.code}</div>
       <div class="flex justify-center my-0.5 p-3 bg-white rounded-xl border border-slate-100 inline-block">${qrImg}</div>
       <div class="bg-slate-50 p-2 rounded-lg border text-left text-xs space-y-1 my-1.5">
-        <p><strong>Cliente:</strong> ${pkg.client} ${pkg.phone ? '(' + pkg.phone + ')' : ''}</p>
-        <p><strong>Destinatario:</strong> ${pkg.recipientPhone ? pkg.recipientPhone : 'N/A'}</p>
+        <p><strong>Cliente:</strong> ${pkg.client} ${phoneClient ? '(' + phoneClient + ')' : ''}</p>
+        <p><strong>Destinatario:</strong> ${phoneRecipient ? phoneRecipient : 'N/A'}</p>
         <p><strong>Contenido:</strong> ${pkg.category || 'N/A'} | <strong>Tamaño:</strong> ${pkg.size || 'N/A'} | <strong>Color:</strong> ${pkg.color || 'N/A'}</p>
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
-        <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
+        <button type="button" onclick="app.sharePackageQR('${safeCode}', '${safeClientName}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
-        <button onclick="app.sendWhatsAppNotificationByName('${pkg.code}', 'client')" ${!hasClientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+        <button type="button" onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-600">
           🟢 Enviar WhatsApp Cliente
         </button>
-        <button onclick="app.sendWhatsAppNotificationByName('${pkg.code}', 'recipient')" ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+        <button type="button" onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-green-700">
           🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;
   }
 
+async searchPrintPackage(query) {
+    const q = (query || '').toLowerCase().trim();
+    const printCard = document.getElementById('print-card-target');
+    if (!printCard) return;
+    
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No hay paquetes disponibles.</p>';
+      return;
+    }
+
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (!q) {
+      this.renderPrintCard(packages[0]);
+      return;
+    }
+
+    const filtered = packages.filter(p => 
+      (p.code || '').toLowerCase().includes(q) || 
+      (p.client || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      printCard.innerHTML = '<p class="text-xs text-slate-400 py-4">No se encontró ningún paquete con ese criterio.</p>';
+      return;
+    }
+
+    // Renderiza el primer resultado coincidente de inmediato
+    this.renderPrintCard(filtered[0]);
+  }
+  
   async loadPrintNotifyView() {
     const printCard = document.getElementById('print-card-target');
     if (!printCard) return;
@@ -498,18 +535,9 @@ async sendWhatsAppNotificationByName(pkgCode, type) {
     }
   }
   
-async sendWhatsAppNotification(pkgCode, type) {
-    if (!pkgCode) {
-      this.showToast('Código de paquete no válido.');
-      return;
-    }
-    
-    const packages = await db.getAll('packages');
-    const cleanSearchCode = pkgCode.toString().toUpperCase().trim();
-    const pkg = packages.find(p => (p.code || '').toString().toUpperCase().trim() === cleanSearchCode);
-
+sendWhatsAppNotification(pkg, type) {
     if (!pkg) {
-      this.showToast('No se encontró el paquete seleccionado en la base de datos.');
+      this.showToast('Paquete no válido.');
       return;
     }
 

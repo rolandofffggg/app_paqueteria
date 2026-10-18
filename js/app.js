@@ -484,8 +484,8 @@ renderPrintCard(pkg) {
     this.renderPrintCard(filtered[0]);
   }
 
-  // --- NUEVA FUNCIONALIDAD INDEPENDIENTE PARA GUARDAR EL CELULAR DEL DESTINATARIO ---
-  async saveRecipientPhoneFromNotify() {
+  
+async saveRecipientPhoneFromNotify() {
     if (!this.currentNotifyPackage) {
       this.showToast('No hay ningún paquete seleccionado o filtrado para actualizar.', 'warning');
       return;
@@ -494,7 +494,16 @@ renderPrintCard(pkg) {
     const newPhoneInput = document.getElementById('notify-edit-recipient-phone');
     if (!newPhoneInput) return;
 
-    const cleanedPhone = newPhoneInput.value.replace(/\D/g, '');
+    const rawPhone = newPhoneInput.value.trim();
+    const cleanedPhone = rawPhone ? rawPhone.replace(/\D/g, '') : '';
+
+    // --- VALIDACIÓN DE CELULAR DEL DESTINATARIO (8 dígitos / Opcional) ---
+    if (rawPhone && cleanedPhone.length !== 8) {
+      this.showToast('El celular del destinatario debe tener exactamente 8 dígitos.');
+      return;
+    }
+    // -------------------------------------------------------------------
+
     const activeUser = auth.getUser();
 
     // Actualizar los datos en el objeto del paquete actual
@@ -520,6 +529,7 @@ renderPrintCard(pkg) {
       syncEngine.processQueue();
     }
   }
+  
 
   async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
     const cleanQuery = (qrCode || '').toUpperCase().trim();

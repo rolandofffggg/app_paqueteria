@@ -226,7 +226,7 @@ async savePackage(e) {
     syncEngine.processQueue();
   }
 
-  async loadRecentReceptionList() {
+async loadRecentReceptionList() {
     const tbody = document.getElementById('rec-recent-table-body');
     const countEl = document.getElementById('rec-table-count');
     if (!tbody) return;
@@ -234,17 +234,28 @@ async savePackage(e) {
     const packages = await db.getAll('packages');
     if (packages.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400 text-xs">No hay paquetes registrados aún.</td></tr>';
-      if (countEl) countEl.textContent = '0 paquetes';
+      if (countEl) countEl.textContent = '0 paquetes hoy';
       return;
     }
 
-    // Ordenar descendente por fecha de creación (más reciente arriba)
-    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const recentPackages = packages.slice(0, 10); // Mostrar los últimos 10
+    // Obtener la fecha actual en formato local o YYYY-MM-DD para comparar con createdAt
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    if (countEl) countEl.textContent = `${recentPackages.length} de ${packages.length}`;
+    // Filtrar únicamente los paquetes del día actual
+    const todayPackages = packages.filter(p => p.createdAt && p.createdAt.startsWith(todayStr));
 
-    tbody.innerHTML = recentPackages.map(p => {
+    if (todayPackages.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400 text-xs">No hay registros de paquetes para el día de hoy.</td></tr>';
+      if (countEl) countEl.textContent = '0 paquetes hoy';
+      return;
+    }
+
+    // Ordenar de forma descendente (el más reciente primero)
+    todayPackages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    if (countEl) countEl.textContent = `${todayPackages.length} hoy`;
+
+    tbody.innerHTML = todayPackages.map(p => {
       const timeStr = p.createdAt ? new Date(p.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '--:--';
       return `
         <tr class="hover:bg-slate-50 transition">

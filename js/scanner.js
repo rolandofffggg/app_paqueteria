@@ -66,8 +66,8 @@ playSuccessBeep(code = '') {
 
   async scanToInput(inputId) {
     this.targetInputId = inputId;
-    this.currentMode = 'INPUT';
-    await this.open('Escanear Código QR');
+    this.currentMode = app && app.isFijaQrActive ? 'CONTINUOUS_RECEPTION' : 'INPUT';
+    await this.open(app && app.isFijaQrActive ? 'Modo Fija QR - Escaneo Continuo' : 'Escanear Código QR');
   }
 
   async scanLocation() {
@@ -121,6 +121,19 @@ playSuccessBeep(code = '') {
     else if (this.currentMode === 'DELIVERY') {
       app.prepareDelivery(cleanText);
     }
+  else if (this.currentMode === 'CONTINUOUS_RECEPTION') {
+      const success = await app.processContinuousReceptionScan(cleanText);
+      if (success) {
+        this.playSuccessBeep(cleanText);
+      }
+      // Reabrir automáticamente la cámara para el siguiente paquete de forma continua
+      setTimeout(() => {
+        if (app && app.isFijaQrActive) {
+          scanner.scanToInput('rec-codigo');
+        }
+      }, 400);
+      return;
+    }    
   }
 }
 

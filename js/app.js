@@ -555,16 +555,16 @@ renderPrintCard(pkg) {
         <p><strong>Ubicación:</strong> <span class="font-mono font-bold text-blue-600">${pkg.location}</span></p>
       </div>
       <div class="space-y-1.5 pt-0.5">
+        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
+          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
+          🟢 Enviar WhatsApp Destinatario
+        </button>
         <button onclick="app.sharePackageQR('${pkg.code}', '${pkg.client.replace(/'/g, "\\'")}')" class="w-full bg-slate-800 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm hover:bg-slate-900">
           📤 Compartir Imagen QR
         </button>
         <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "client")' ${!hasClientPhone ? 'disabled' : ''} 
           class="w-full bg-green-500 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
           🟢 Enviar WhatsApp Cliente
-        </button>
-        <button onclick='app.sendWhatsAppNotification(${JSON.stringify(pkg)}, "recipient")' ${!hasRecipientPhone ? 'disabled' : ''} 
-          class="w-full bg-green-600 disabled:bg-slate-300 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 shadow-sm">
-          🟢 Enviar WhatsApp Destinatario
         </button>
       </div>
     `;

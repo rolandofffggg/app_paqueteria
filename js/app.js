@@ -125,6 +125,7 @@ class App {
     });
     if (secId === 'sec-reception') {
       await this.loadLocationGroupsSettings();
+      this.loadRecentReceptionList(); // <--- Cargar tabla de recientes
     } else if (secId === 'sec-manage') {
       this.loadManageList();
     } else if (secId === 'sec-print-notify') {
@@ -221,9 +222,40 @@ async savePackage(e) {
       this.populateGroupSelects();
     }
     this.loadDashboard();
+    this.loadRecentReceptionList(); // <--- Actualización automática de la tabla
     syncEngine.processQueue();
   }
 
+  async loadRecentReceptionList() {
+    const tbody = document.getElementById('rec-recent-table-body');
+    const countEl = document.getElementById('rec-table-count');
+    if (!tbody) return;
+
+    const packages = await db.getAll('packages');
+    if (packages.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400 text-xs">No hay paquetes registrados aún.</td></tr>';
+      if (countEl) countEl.textContent = '0 paquetes';
+      return;
+    }
+
+    // Ordenar descendente por fecha de creación (más reciente arriba)
+    packages.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const recentPackages = packages.slice(0, 10); // Mostrar los últimos 10
+
+    if (countEl) countEl.textContent = `${recentPackages.length} de ${packages.length}`;
+
+    tbody.innerHTML = recentPackages.map(p => {
+      const timeStr = p.createdAt ? new Date(p.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+      return `
+        <tr class="hover:bg-slate-50 transition">
+          <td class="p-2 font-mono font-bold text-slate-900">${p.code}</td>
+          <td class="p-2 font-bold text-slate-800">${p.client}</td>
+          <td class="p-2 font-semibold text-blue-600">${p.location || 'SIN UBICACIÓN'}</td>
+          <td class="p-2 text-center text-slate-500 font-bold">${timeStr}</td>
+        </tr>
+      `;
+    }).join('');
+  }
   
   async loadLocationGroupsSettings() {
     const saved = await db.get('settings', 'locationGroups');

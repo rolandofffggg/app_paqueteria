@@ -2,6 +2,8 @@ class App {
   constructor() {
     this.selectedDeliveryPackage = null;
     this.lastCreatedPackage = null;
+    this.isFijaQrActive = false;
+    this.fijaQrCount = 0;
     this.currentCalculatedAmount = 0;
     this.tariffs = { baseRate: 2.0, graceDays: 3, dailyPenalty: 1.0 };
     this.companyName = '';
@@ -226,6 +228,104 @@ async savePackage(e) {
     syncEngine.processQueue();
   }
 
+toggleFijaQr(isActive) {
+    this.isFijaQrActive = isActive;
+    this.fijaQrCount = 0;
+    const counterEl = document.getElementById('fija-qr-counter');
+    
+    if (counterEl) {
+      if (isActive) {
+        counterEl.textContent = '0';
+        counterEl.classList.remove('hidden');
+        this.showToast('Modo Fija QR activado. Escaneo continuo listo.', 'success');
+        // Iniciar el escáner de inmediato al activar la casilla
+        setTimeout(() => {
+          scanner.scanToInput('rec-codigo');
+        }, 200);
+      } else {
+        counterEl.classList.add('hidden');
+        this.showToast('Modo Fija QR desactivado.', 'warning');
+      }
+    }
+  }
+
+  async processContinuousReceptionScan(codeVal) {
+    const pkgCode = (codeVal || '').trim().toUpperCase();
+    if (!pkgCode) {
+      this.showToast('Código QR vacío o inválido.');
+      return false;
+    }
+
+    // Validación de existencia previa en la base de datos
+    const packages = await db.getAll('packages');
+    if (packages.some(p => (p.code || '').toUpperCase() === pkgCode)) {
+      this.showToast(`El código "${pkgCode}" ya existe en el sistema.`);
+      return false;
+    }
+
+    // Tomar los datos actuales del formulario (cliente, características, ubicación fija si aplica)
+    const clientName = document.getElementById('rec-cliente').value.toUpperCase().trim() || 'CLIENTE GENERAL';
+    const rawPhone = document.getElementById('rec-celular').value.trim();
+    const rawRecipientPhone = document.getElementById('rec-celular-dest').value.trim();
+    const phoneClient = rawPhone ? rawPhone.replace(/\D/g, '') : '';
+    const phoneRecipient = rawRecipientPhone ? rawRecipientPhone.replace(/\D/g, '') : '';
+
+    // Validaciones de celular si contienen información
+    if (rawPhone && phoneClient.length !== 8) {
+      this.showToast('El celular del cliente debe tener exactamente 8 dígitos.');
+      return false;
+    }
+    if (rawRecipientPhone && phoneRecipient.length !== 8) {
+      this.showToast('El celular del destinatario debe tener exactamente 8 dígitos.');
+      return false;
+    }
+
+    let locationVal = document.getElementById('rec-ubicacion').value.trim();
+    if (!locationVal) {
+      locationVal = 'SIN UBICACIÓN';
+    }
+
+    const activeUser = auth.getUser();
+    const pkgId = 'PKG-' + Date.now();
+    const pkg = {
+      packageId: pkgId,
+      code: pkgCode,
+      qrCode: pkgCode,
+      client: clientName,
+      phone: phoneClient,
+      recipientPhone: phoneRecipient,
+      category: document.getElementById('rec-categoria').value || 'OTROS',
+      size: document.getElementById('rec-tamano').value || 'PEQUEÑO',
+      color: document.getElementById('rec-color').value || 'NEGRO',
+      location: locationVal,
+      status: 'PENDIENTE',
+      createdAt: new Date().toISOString(),
+      createdBy: activeUser ? activeUser.username : 'sistema',
+      updatedBy: activeUser ? activeUser.username : 'sistema',
+      amountCharged: 0
+    };
+
+    this.lastCreatedPackage = pkg;
+    await db.put('packages', pkg);
+    await db.put('syncQueue', { id: 'SYNC-' + Date.now(), type: 'CREATE', payload: pkg });
+
+    // Incrementar y actualizar el contador visual de Fija QR
+    this.fijaQrCount++;
+    const counterEl = document.getElementById('fija-qr-counter');
+    if (counterEl) {
+      counterEl.textContent = this.fijaQrCount;
+    }
+
+    this.showToast(`✅ Paquete ${pkg.code} registrado automáticamente.`, 'success');
+
+    // Actualizar las vistas del sistema
+    this.loadDashboard();
+    this.loadRecentReceptionList();
+    syncEngine.processQueue();
+
+    return true;
+  }
+  
 async loadRecentReceptionList() {
     const tbody = document.getElementById('rec-recent-table-body');
     const countEl = document.getElementById('rec-table-count');

@@ -1465,8 +1465,16 @@ async prepareDelivery(qrCode) {
 
         // Sección del Encabezado con color de cinta
         const header = document.createElement('div');
-        header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7.5pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
+        header.className = 'label-header h-[14%] flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
         header.style.backgroundColor = this.selectedColor;
+        // Determinar si el color de cinta seleccionado es claro (Blanco o Beige) para asignar texto negro
+        const upperColor = (this.selectedColor || '').toUpperCase();
+        if (upperColor === '#FFFFFF' || upperColor === '#F5F5DC') {
+          header.style.color = '#000000';
+        } else {
+          header.style.color = '#FFFFFF';
+        }
+
         header.textContent = headerText;
         card.appendChild(header);
 

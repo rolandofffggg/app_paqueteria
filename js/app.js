@@ -1406,7 +1406,7 @@ async prepareDelivery(qrCode) {
     // Nueva capacidad de etiquetas por tipo de papel con altura de 4.2 cm
     let labelsPerRow = 8;
     let rowsPerCarta = 6;   // 6 filas * 8 = 48 etiquetas por hoja Carta
-    let rowsPerOficio = 7;  // 7 filas * 8 = 56 etiquetas por hoja Oficio
+    let rowsPerOficio = 8;  // 8 filas * 8 = 64 etiquetas por hoja Oficio
     let maxRows = sheetType === 'carta' ? rowsPerCarta : rowsPerOficio;
     let labelsPerSheet = labelsPerRow * maxRows;
 

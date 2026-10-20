@@ -768,7 +768,7 @@ async updatePackageLocation(qrCode, newLocation, autoOpenScanner = false) {
 *Código:* ${pkg.code}
 *Remitente:* ${pkg.client} (${pkg.phone || 'N/A'})
 *Destinatario:* ${pkg.recipientPhone ? '(' + pkg.recipientPhone + ')' : 'N/A'}
-*Contenido:* ${pkg.category} | *Tamaño:* ${pkg.size} | *Color:* ${pkg.color}
+*Contenido:* ${pkg.category}
 --------------------------------------------------
 💵 *Tarifa Base:* Bs. ${this.tariffs.baseRate.toFixed(2)} por ${this.tariffs.graceDays} días.
 + 💵 *Posteriormente se incrementa:* Bs. ${this.tariffs.dailyPenalty.toFixed(2)} por día adicional.`;

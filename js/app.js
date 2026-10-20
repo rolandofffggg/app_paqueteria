@@ -1454,7 +1454,7 @@ async prepareDelivery(qrCode) {
 
         // Sección del Logotipo (ampliada para aprovechar la nueva altura)
         const logoContainer = document.createElement('div');
-        logoContainer.className = 'label-logo-container h-[20%] flex items-center justify-center p-[2px] bg-white';
+        logoContainer.className = 'label-logo-container h-[22%] flex items-center justify-center p-[2px] bg-white';
         
         const img = document.createElement('img');
         img.src = './icons/LogoPaqueteria.png';
@@ -1465,7 +1465,7 @@ async prepareDelivery(qrCode) {
 
         // Sección del Encabezado con color de cinta
         const header = document.createElement('div');
-        header.className = 'label-header h-[14%] flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
+        header.className = 'label-header h-[12%] flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
         header.style.backgroundColor = this.selectedColor;
         // Determinar si el color de cinta seleccionado es claro (Blanco o Beige) para asignar texto negro
         const upperColor = (this.selectedColor || '').toUpperCase();

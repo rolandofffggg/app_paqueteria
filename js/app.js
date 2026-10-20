@@ -1488,7 +1488,7 @@ async prepareDelivery(qrCode) {
         const footer = document.createElement('div');
         footer.className = 'label-footer h-[18%] flex items-center justify-center pb-[2px] bg-white';
         const codeText = document.createElement('div');
-        codeText.className = 'label-code-text text-[13pt] font-bold text-black tracking-[0.3px] leading-none';
+        codeText.className = 'label-code-text text-[15pt] font-bold text-black tracking-[0.3px] leading-none';
         codeText.textContent = codeVal;
         footer.appendChild(codeText);
         card.appendChild(footer);

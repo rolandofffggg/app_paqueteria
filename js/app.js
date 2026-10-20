@@ -1454,7 +1454,7 @@ async prepareDelivery(qrCode) {
 
         // Sección del Logotipo (ampliada para aprovechar la nueva altura)
         const logoContainer = document.createElement('div');
-        logoContainer.className = 'label-logo-container h-[18%] flex items-center justify-center p-[2px] bg-white';
+        logoContainer.className = 'label-logo-container h-[19%] flex items-center justify-center p-[2px] bg-white';
         
         const img = document.createElement('img');
         img.src = './icons/LogoPaqueteria.png';
@@ -1494,7 +1494,7 @@ async prepareDelivery(qrCode) {
 
         // Sección del Texto del Código (ampliada y con fuente aumentada en 2 puntos: de 11pt a 17pt)
         const footer = document.createElement('div');
-        footer.className = 'label-footer h-[18%] flex items-center justify-center pb-[2px] bg-white';
+        footer.className = 'label-footer h-[17%] flex items-center justify-center pb-[2px] bg-white';
         const codeText = document.createElement('div');
         codeText.className = 'label-code-text text-[17pt] font-bold text-black tracking-[0.3px] leading-none';
         codeText.textContent = codeVal;

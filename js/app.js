@@ -1374,152 +1374,155 @@ async prepareDelivery(qrCode) {
     return "FUERA DE RANGO";
   }
 
-  
   generateLabels() {
-      const startInput = document.getElementById('inputStart');
-      const sheetsInput = document.getElementById('inputSheets');
-      const headerInput = document.getElementById('headerText');
-      const sheetTypeInput = document.getElementById('sheetType');
-      const container = document.getElementById('previewContainer');
-  
-      if (!startInput || !sheetsInput || !container) return;
-  
-      const start = parseInt(startInput.value, 10);
-      const sheetsToPrint = parseInt(sheetsInput.value, 10);
-      const headerText = headerInput ? headerInput.value.trim() : 'LA CLAVE';
-      const sheetType = sheetTypeInput ? sheetTypeInput.value : 'carta';
-  
-      container.innerHTML = '';
-  
-      // --- VALIDACIONES DE ENTRADA ---
-      if (isNaN(start) || start < 1 || start > 19144736) {
-        this.showToast('El número inicial debe estar entre 1 y 19,144,736.', 'warning');
-        container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">NÚMERO INICIAL FUERA DE RANGO</div>`;
-        return;
-      }
-  
-      if (isNaN(sheetsToPrint) || sheetsToPrint < 1) {
-        this.showToast('Ingrese una cantidad válida de hojas a imprimir (mínimo 1).', 'warning');
-        container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">CANTIDAD DE HOJAS INVÁLIDA</div>`;
-        return;
-      }
-  
-      // Capacidad por tipo de papel
-      let labelsPerRow = 8;
-      let rowsPerCarta = 7;   // 56 etiquetas
-      let rowsPerOficio = 8;  // 64 etiquetas
-      let maxRows = sheetType === 'carta' ? rowsPerCarta : rowsPerOficio;
-      let labelsPerSheet = labelsPerRow * maxRows;
-  
-      // Cálculo automático del total de etiquetas y del número final
-      let totalLabels = sheetsToPrint * labelsPerSheet;
-      let end = start + totalLabels - 1;
-  
-      // Validación de límite máximo alcanzable en la secuencia de códigos
-      if (end > 19144736) {
-        this.showToast(`La secuencia generada supera el límite máximo permitido (19,144,736).`, 'warning');
-        container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">EL RANGO CALCULADO EXCEDE EL MÁXIMO PERMITIDO</div>`;
-        return;
-      }
-  
-      let currentLabelIndex = start;
-  
-      // Generación de la estructura de las hojas
-      for (let s = 0; s < sheetsToPrint; s++) {
-        const sheetDiv = document.createElement('div');
-        sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-start`;
-        sheetDiv.style.width = '21.59cm';
-        sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm';
-        
-        sheetDiv.style.paddingTop = '0.4cm'; 
-        sheetDiv.style.paddingBottom = '0cm';
-        sheetDiv.style.paddingLeft = '0.3cm';
-        sheetDiv.style.paddingRight = '0.3cm';
-  
-        const gridDiv = document.createElement('div');
-        gridDiv.className = 'grid-labels grid justify-center items-start align-content-start';
-        gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
-        gridDiv.style.gridTemplateRows = `repeat(${maxRows}, 3.7cm)`;
-        
-        let uniformGap = '2px'; 
-        gridDiv.style.columnGap = uniformGap;
-        gridDiv.style.rowGap = uniformGap;
-  
-        for (let i = 0; i < labelsPerSheet; i++) {
-          let codeVal = this.convertToCode(currentLabelIndex);
-  
-          const card = document.createElement('div');
-          card.className = 'label-card border-[0.5px] border-slate-500 flex flex-col bg-white overflow-hidden relative';
-          card.style.width = '2.3cm';
-          card.style.height = '3.7cm';
-  
-          const logoContainer = document.createElement('div');
-          logoContainer.className = 'label-logo-container h-[16%] flex items-center justify-center p-[1px] bg-white';
-          
-          const img = document.createElement('img');
-          img.src = './icons/LogoPaqueteria.png';
-          img.className = 'label-logo max-h-full max-w-[2.1cm] object-contain';
-          logoContainer.appendChild(img);
-          
-          card.appendChild(logoContainer);
-  
-          const header = document.createElement('div');
-          header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
-          header.style.backgroundColor = this.selectedColor;
-          header.textContent = headerText;
-          card.appendChild(header);
-  
-          const qrContainer = document.createElement('div');
-          qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0 overflow-hidden';
-          
-          const qrBox = document.createElement('div');
-          qrBox.className = 'qr-code-box flex items-center justify-center';
-          qrBox.style.width = '1.9cm';
-          qrBox.style.height = '1.9cm';
-          qrBox.style.maxWidth = '1.9cm';
-          qrBox.style.maxHeight = '1.9cm';
-          qrBox.id = `qr-mod-${s}-${i}-${currentLabelIndex}`;
-          qrContainer.appendChild(qrBox);
-          card.appendChild(qrContainer);
-  
-          const footer = document.createElement('div');
-          footer.className = 'label-footer flex items-center justify-center pb-[2px] mt-[-2px] bg-white';
-          const codeText = document.createElement('div');
-          codeText.className = 'label-code-text text-[11pt] font-semibold text-black tracking-[0.2px] leading-none';
-          codeText.textContent = codeVal;
-          footer.appendChild(codeText);
-          card.appendChild(footer);
-  
-          gridDiv.appendChild(card);
-          currentLabelIndex++;
-        }
-  
-        sheetDiv.appendChild(gridDiv);
-        container.appendChild(sheetDiv);
-  
-        // Renderizado asíncrono de los códigos QR
-        setTimeout(() => {
-          let sheetStartIdx = start + (s * labelsPerSheet);
-          for (let i = 0; i < labelsPerSheet; i++) {
-            let cIdx = sheetStartIdx + i;
-            let codeVal = this.convertToCode(cIdx);
-            let elId = `qr-mod-${s}-${i}-${cIdx}`;
-            let element = document.getElementById(elId);
-            if (element) {
-              element.innerHTML = '';
-              new QRCode(element, {
-                text: codeVal,
-                width: 75,
-                height: 75,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.M
-              });
-            }
-          }
-        }, 50);
-      }
+    const startInput = document.getElementById('inputStart');
+    const sheetsInput = document.getElementById('inputSheets');
+    const headerInput = document.getElementById('headerText');
+    const sheetTypeInput = document.getElementById('sheetType');
+    const container = document.getElementById('previewContainer');
+
+    if (!startInput || !sheetsInput || !container) return;
+
+    const start = parseInt(startInput.value, 10);
+    const sheetsToPrint = parseInt(sheetsInput.value, 10);
+    const headerText = headerInput ? headerInput.value.trim() : 'LA CLAVE';
+    const sheetType = sheetTypeInput ? sheetTypeInput.value : 'carta';
+
+    container.innerHTML = '';
+
+    // --- VALIDACIONES DE ENTRADA ---
+    if (isNaN(start) || start < 1 || start > 19144736) {
+      this.showToast('El número inicial debe estar entre 1 y 19,144,736.', 'warning');
+      container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">NÚMERO INICIAL FUERA DE RANGO</div>`;
+      return;
     }
+
+    if (isNaN(sheetsToPrint) || sheetsToPrint < 1) {
+      this.showToast('Ingrese una cantidad válida de hojas a imprimir (mínimo 1).', 'warning');
+      container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">CANTIDAD DE HOJAS INVÁLIDA</div>`;
+      return;
+    }
+
+    // Nueva capacidad de etiquetas por tipo de papel con altura de 4.2 cm
+    let labelsPerRow = 8;
+    let rowsPerCarta = 6;   // 6 filas * 8 = 48 etiquetas por hoja Carta
+    let rowsPerOficio = 7;  // 7 filas * 8 = 56 etiquetas por hoja Oficio
+    let maxRows = sheetType === 'carta' ? rowsPerCarta : rowsPerOficio;
+    let labelsPerSheet = labelsPerRow * maxRows;
+
+    // Cálculo automático del total de etiquetas y del número final
+    let totalLabels = sheetsToPrint * labelsPerSheet;
+    let end = start + totalLabels - 1;
+
+    // Validación de límite máximo alcanzable en la secuencia de códigos
+    if (end > 19144736) {
+      this.showToast(`La secuencia generada supera el límite máximo permitido (19,144,736).`, 'warning');
+      container.innerHTML = `<div class="out-of-range text-red-600 font-bold p-6 text-center">EL RANGO CALCULADO EXCEDE EL MÁXIMO PERMITIDO</div>`;
+      return;
+    }
+
+    let currentLabelIndex = start;
+
+    // Generación de la estructura de las hojas
+    for (let s = 0; s < sheetsToPrint; s++) {
+      const sheetDiv = document.createElement('div');
+      sheetDiv.className = `sheet ${sheetType} bg-white shadow-lg relative box-border flex flex-col items-center justify-start`;
+      sheetDiv.style.width = '21.59cm';
+      sheetDiv.style.height = sheetType === 'carta' ? '27.94cm' : '35.56cm';
+      
+      sheetDiv.style.paddingTop = '0.4cm'; 
+      sheetDiv.style.paddingBottom = '0cm';
+      sheetDiv.style.paddingLeft = '0.3cm';
+      sheetDiv.style.paddingRight = '0.3cm';
+
+      const gridDiv = document.createElement('div');
+      gridDiv.className = 'grid-labels grid justify-center items-start align-content-start';
+      gridDiv.style.gridTemplateColumns = `repeat(8, 2.3cm)`;
+      gridDiv.style.gridTemplateRows = `repeat(${maxRows}, 4.2cm)`; // Altura actualizada a 4.2 cm
+      
+      let uniformGap = '2px'; 
+      gridDiv.style.columnGap = uniformGap;
+      gridDiv.style.rowGap = uniformGap;
+
+      for (let i = 0; i < labelsPerSheet; i++) {
+        let codeVal = this.convertToCode(currentLabelIndex);
+
+        const card = document.createElement('div');
+        card.className = 'label-card border-[0.5px] border-slate-500 flex flex-col bg-white overflow-hidden relative';
+        card.style.width = '2.3cm';
+        card.style.height = '4.2cm'; // Altura de la etiqueta 4.2 cm
+
+        // Sección del Logotipo (ampliada para aprovechar la nueva altura)
+        const logoContainer = document.createElement('div');
+        logoContainer.className = 'label-logo-container h-[18%] flex items-center justify-center p-[2px] bg-white';
+        
+        const img = document.createElement('img');
+        img.src = './icons/LogoPaqueteria.png';
+        img.className = 'label-logo max-h-full max-w-[2.1cm] object-contain';
+        logoContainer.appendChild(img);
+        
+        card.appendChild(logoContainer);
+
+        // Sección del Encabezado con color de cinta
+        const header = document.createElement('div');
+        header.className = 'label-header h-[15%] text-white flex items-center justify-center text-[7.5pt] font-black text-center px-[1px] overflow-hidden whitespace-nowrap text-ellipsis mb-[2px]';
+        header.style.backgroundColor = this.selectedColor;
+        header.textContent = headerText;
+        card.appendChild(header);
+
+        // Contenedor del Código QR (proporcional al nuevo espacio)
+        const qrContainer = document.createElement('div');
+        qrContainer.className = 'label-qr-container flex-1 flex items-center justify-center p-0 overflow-hidden';
+        
+        const qrBox = document.createElement('div');
+        qrBox.className = 'qr-code-box flex items-center justify-center';
+        qrBox.style.width = '2.0cm';
+        qrBox.style.height = '2.0cm';
+        qrBox.style.maxWidth = '2.0cm';
+        qrBox.style.maxHeight = '2.0cm';
+        qrBox.id = `qr-mod-${s}-${i}-${currentLabelIndex}`;
+        qrContainer.appendChild(qrBox);
+        card.appendChild(qrContainer);
+
+        // Sección del Texto del Código (ampliada y con fuente aumentada en 2 puntos: de 11pt a 13pt)
+        const footer = document.createElement('div');
+        footer.className = 'label-footer h-[18%] flex items-center justify-center pb-[2px] bg-white';
+        const codeText = document.createElement('div');
+        codeText.className = 'label-code-text text-[13pt] font-bold text-black tracking-[0.3px] leading-none';
+        codeText.textContent = codeVal;
+        footer.appendChild(codeText);
+        card.appendChild(footer);
+
+        gridDiv.appendChild(card);
+        currentLabelIndex++;
+      }
+
+      sheetDiv.appendChild(gridDiv);
+      container.appendChild(sheetDiv);
+
+      // Renderizado asíncrono de los códigos QR con tamaño optimizado para el espacio de 2.0cm
+      setTimeout(() => {
+        let sheetStartIdx = start + (s * labelsPerSheet);
+        for (let i = 0; i < labelsPerSheet; i++) {
+          let cIdx = sheetStartIdx + i;
+          let codeVal = this.convertToCode(cIdx);
+          let elId = `qr-mod-${s}-${i}-${cIdx}`;
+          let element = document.getElementById(elId);
+          if (element) {
+            element.innerHTML = '';
+            new QRCode(element, {
+              text: codeVal,
+              width: 75,
+              height: 75,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        }
+      }, 50);
+    }
+  }
   
 
   downloadLabelsPDF() {

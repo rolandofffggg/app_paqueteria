@@ -1484,11 +1484,11 @@ async prepareDelivery(qrCode) {
         qrContainer.appendChild(qrBox);
         card.appendChild(qrContainer);
 
-        // Sección del Texto del Código (ampliada y con fuente aumentada en 2 puntos: de 11pt a 13pt)
+        // Sección del Texto del Código (ampliada y con fuente aumentada en 2 puntos: de 11pt a 17pt)
         const footer = document.createElement('div');
         footer.className = 'label-footer h-[18%] flex items-center justify-center pb-[2px] bg-white';
         const codeText = document.createElement('div');
-        codeText.className = 'label-code-text text-[15pt] font-bold text-black tracking-[0.3px] leading-none';
+        codeText.className = 'label-code-text text-[17pt] font-bold text-black tracking-[0.3px] leading-none';
         codeText.textContent = codeVal;
         footer.appendChild(codeText);
         card.appendChild(footer);

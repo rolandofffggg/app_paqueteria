@@ -83,5 +83,3 @@ class ApiService {
 }
 
 const api = new ApiService();
-
-const api = new ApiService();

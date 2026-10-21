@@ -75,5 +75,3 @@ class SyncEngine {
 }
 
 const syncEngine = new SyncEngine();
-
-const syncEngine = new SyncEngine();

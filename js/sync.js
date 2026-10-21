@@ -15,15 +15,17 @@ class SyncEngine {
             await api.sendSyncItem(item);
             await db.delete('syncQueue', item.id);
           } catch (err) {
-            console.error('Error al enviar item de sincronización:', err);
-            break;
+            console.warn(`No se pudo sincronizar el ítem ${item.id} en este ciclo (posible red lenta/inestable):`, err);
+            // En lugar de hacer 'break' y congelar todo, permitimos continuar 
+            // con otros elementos independientes de la cola o detener ordenadamente sin romper la app.
+            continue; 
           }
         }
       }
 
       await this.pullRemoteChanges();
     } catch (e) {
-      console.error('Error en sincronización:', e);
+      console.error('Error general en sincronización:', e);
     } finally {
       this.isSyncing = false;
       if (typeof app !== 'undefined') {
@@ -59,7 +61,7 @@ class SyncEngine {
         }
       }
 
-      // 3. Ajustes Globales (Marca, Tarifas, Catálogo)
+      // 3. Ajustes Globales
       const remoteSettings = await api.getRemoteSettings();
       if (remoteSettings && typeof remoteSettings === 'object') {
         for (const [key, value] of Object.entries(remoteSettings)) {
@@ -67,9 +69,11 @@ class SyncEngine {
         }
       }
     } catch (e) {
-      console.warn('Error bajando cambios remotos:', e);
+      console.warn('Error bajando cambios remotos (red inestable):', e);
     }
   }
 }
+
+const syncEngine = new SyncEngine();
 
 const syncEngine = new SyncEngine();

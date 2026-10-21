@@ -40,6 +40,8 @@ class AuthManager {
           
           // Eliminar de IndexedDB local los usuarios que ya no existen en la planilla remota
           for (const locUser of localUsers) {
+            // EXCEPCIÓN DE SEGURIDAD: Nunca eliminar al usuario 'admin' local automáticamente
+            if (locUser.username.toLowerCase() === 'admin') continue;
             if (!remoteUsernames.includes(locUser.username.toLowerCase())) {
               await db.delete('users', locUser.username);
             }
